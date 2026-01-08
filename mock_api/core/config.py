@@ -55,6 +55,7 @@ from mock_api.core.constants import (
     FileExtension,
     LogLevel,
 )
+from mock_api.core.exceptions import ConfigFileNotFoundError, ConfigParseError
 from mock_api.utils.logger import configure_logging
 
 # =============================================================================
@@ -185,11 +186,11 @@ def load_config_file(file_path: Path) -> dict[str, Any]:
         Configuration dictionary
 
     Raises:
-        FileNotFoundError: If config file doesn't exist
-        ValueError: If config file format is invalid
+        ConfigFileNotFoundError: If config file doesn't exist
+        ConfigParseError: If config file format is invalid
     """
     if not file_path.exists():
-        raise FileNotFoundError(f"Configuration file not found: {file_path}")
+        raise ConfigFileNotFoundError(str(file_path))
 
     content = file_path.read_text()
 
@@ -198,7 +199,7 @@ def load_config_file(file_path: Path) -> dict[str, Any]:
         try:
             return json.loads(content)
         except json.JSONDecodeError as e:
-            raise ValueError(f"Invalid JSON in config file: {e}") from e
+            raise ConfigParseError(str(file_path), f"Invalid JSON: {e}") from e
 
     # Try YAML
     if file_path.suffix in {FileExtension.YML, FileExtension.YAML}:
@@ -213,10 +214,11 @@ def load_config_file(file_path: Path) -> dict[str, Any]:
         try:
             return yaml.safe_load(content) or {}
         except yaml.YAMLError as e:
-            raise ValueError(f"Invalid YAML in config file: {e}") from e
+            raise ConfigParseError(str(file_path), f"Invalid YAML: {e}") from e
 
-    raise ValueError(
-        f"Unsupported config file format: {file_path.suffix}. Use .json, .yml, or .yaml"
+    raise ConfigParseError(
+        str(file_path),
+        f"Unsupported format: {file_path.suffix}. Use .json, .yml, or .yaml",
     )
 
 

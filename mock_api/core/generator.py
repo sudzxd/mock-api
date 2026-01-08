@@ -41,6 +41,7 @@ from .constants import (
     UPDATED_AT_MAX_DAYS_AGO,
     FieldPattern,
 )
+from .exceptions import ModelNotFoundError
 from .types import FieldSchema, ModelSchema
 
 # =============================================================================
@@ -150,9 +151,8 @@ class DataGenerator:
             True
         """
         if model_name not in self.schemas:
-            raise ValueError(
-                f"Model '{model_name}' not found. "
-                f"Available models: {', '.join(self.schemas.keys())}"
+            raise ModelNotFoundError(
+                model_name, available_models=list(self.schemas.keys())
             )
 
         schema = self.schemas[model_name]

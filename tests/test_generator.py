@@ -7,6 +7,7 @@ from pathlib import Path
 
 import pytest
 from mock_api.core.constants import DEFAULT_GENERATION_COUNT, PRIMARY_KEY_FIELD
+from mock_api.core.exceptions import ModelNotFoundError
 from mock_api.core.generator import DataGenerator
 from mock_api.core.parser import SchemaParser
 from mock_api.core.types import ModelSchema
@@ -131,10 +132,10 @@ def test_generate_default_count(contact_schema: dict[str, ModelSchema]) -> None:
 def test_generate_raises_on_invalid_model(
     contact_schema: dict[str, ModelSchema],
 ) -> None:
-    """Test generate raises ValueError for non-existent model."""
+    """Test generate raises ModelNotFoundError for non-existent model."""
     generator = DataGenerator(contact_schema)
 
-    with pytest.raises(ValueError, match="Model 'Invalid' not found"):
+    with pytest.raises(ModelNotFoundError, match="Model 'Invalid' not found"):
         generator.generate("Invalid")
 
 

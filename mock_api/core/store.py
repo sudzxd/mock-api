@@ -32,6 +32,7 @@ from .constants import (
     MIN_PAGE_SIZE,
     PRIMARY_KEY_FIELD,
 )
+from .exceptions import DuplicateInstanceError, InstanceNotFoundError, StoreError
 from .types import PaginationInfo, QueryResult
 
 # =============================================================================
@@ -161,10 +162,7 @@ class DataStore:
 
             # Check for duplicate ID - O(1) with hash map
             if instance_id is not None and instance_id in self._data[model_name]:
-                raise ValueError(
-                    f"{model_name} with {PRIMARY_KEY_FIELD}={instance_id} "
-                    "already exists"
-                )
+                raise DuplicateInstanceError(model_name, instance_id)
 
             # Add to store - O(1) insertion
             if instance_id is not None:
@@ -230,9 +228,7 @@ class DataStore:
                 model_name not in self._data
                 or instance_id not in self._data[model_name]
             ):
-                raise ValueError(
-                    f"{model_name} with {PRIMARY_KEY_FIELD}={instance_id} not found"
-                )
+                raise InstanceNotFoundError(model_name, instance_id)
 
             # Get reference to instance
             instance = self._data[model_name][instance_id]
@@ -311,12 +307,15 @@ class DataStore:
         """
         # Validate pagination parameters
         if page < DEFAULT_PAGE_NUMBER:
-            raise ValueError(f"Page must be >= {DEFAULT_PAGE_NUMBER}, got: {page}")
+            raise StoreError(
+                f"Invalid page number: {page}",
+                f"Page must be >= {DEFAULT_PAGE_NUMBER}",
+            )
 
         if page_size < MIN_PAGE_SIZE or page_size > MAX_PAGE_SIZE:
-            raise ValueError(
-                f"Page size must be between {MIN_PAGE_SIZE} and {MAX_PAGE_SIZE}, "
-                f"got: {page_size}"
+            raise StoreError(
+                f"Invalid page size: {page_size}",
+                f"Page size must be between {MIN_PAGE_SIZE} and {MAX_PAGE_SIZE}",
             )
 
         with self._lock:
