@@ -5,6 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
+from mock_api.core.exceptions import SchemaFileNotFoundError, SchemaValidationError
 from mock_api.core.parser import SchemaParser
 
 # =============================================================================
@@ -56,16 +57,16 @@ def enum_models_file() -> str:
 def test_parse_file_with_nonexistent_file_raises_file_not_found_error(
     parser: SchemaParser,
 ) -> None:
-    """Test that parsing a nonexistent file raises FileNotFoundError."""
-    with pytest.raises(FileNotFoundError, match="Schema file not found"):
+    """Test that parsing a nonexistent file raises SchemaFileNotFoundError."""
+    with pytest.raises(SchemaFileNotFoundError, match="Schema file not found"):
         parser.parse_file("nonexistent.py")
 
 
 def test_parse_file_with_non_python_file_raises_value_error(
     parser: SchemaParser,
 ) -> None:
-    """Test that parsing a non-.py file raises ValueError."""
-    with pytest.raises(ValueError, match="must be a Python file"):
+    """Test that parsing a non-.py file raises SchemaValidationError."""
+    with pytest.raises(SchemaValidationError, match="Must be a Python file"):
         parser.parse_file("models.txt")
 
 

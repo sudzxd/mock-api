@@ -8,6 +8,7 @@ import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 from mock_api.core.constants import HTTPStatus
+from mock_api.core.exceptions import SchemaFileNotFoundError
 from mock_api.core.server import Server
 
 # =============================================================================
@@ -381,7 +382,7 @@ def test_server_crud_list(client: TestClient, server: Server) -> None:
 
 def test_server_with_nonexistent_file() -> None:
     """Test Server with nonexistent models file raises error."""
-    with pytest.raises(FileNotFoundError):
+    with pytest.raises(SchemaFileNotFoundError):
         Server("/nonexistent/path/models.py")
 
 

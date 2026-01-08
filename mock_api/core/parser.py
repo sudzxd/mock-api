@@ -32,6 +32,7 @@ from .constants import (
     SEMANTIC_USER_FIELD_NAMES,
     RelationshipType,
 )
+from .exceptions import SchemaFileNotFoundError, SchemaParseError, SchemaValidationError
 from .types import FieldSchema, ModelSchema, Relationship
 
 # =============================================================================
@@ -96,13 +97,13 @@ class SchemaParser:
 
         # Check extension first (before existence check)
         if path.suffix != PYTHON_FILE_EXTENSION:
-            raise ValueError(
-                f"Schema file must be a Python file ({PYTHON_FILE_EXTENSION}), "
-                f"got: {file_path}"
+            raise SchemaValidationError(
+                file_path,
+                f"Must be a Python file ({PYTHON_FILE_EXTENSION}), got: {path.suffix}",
             )
 
         if not path.exists():
-            raise FileNotFoundError(f"Schema file not found: {file_path}")
+            raise SchemaFileNotFoundError(file_path)
 
         # Import the module dynamically
         logger.debug(f"Importing module from {path}")
@@ -219,7 +220,7 @@ class SchemaParser:
         """
         spec = importlib.util.spec_from_file_location(path.stem, path)
         if spec is None or spec.loader is None:
-            raise ImportError(f"Cannot load module from {path}")
+            raise SchemaParseError(str(path), "Cannot load module specification")
 
         module = importlib.util.module_from_spec(spec)
         sys.modules[path.stem] = module

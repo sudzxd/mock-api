@@ -11,6 +11,11 @@ from mock_api.core.constants import (
     MAX_PAGE_SIZE,
     PRIMARY_KEY_FIELD,
 )
+from mock_api.core.exceptions import (
+    DuplicateInstanceError,
+    InstanceNotFoundError,
+    StoreError,
+)
 from mock_api.core.store import DataStore
 from mock_api.core.types import PaginationInfo, QueryResult
 
@@ -122,7 +127,7 @@ def test_create_duplicate_id_raises_error(store: DataStore) -> None:
     """Test that creating duplicate ID raises error."""
     store.create("User", {"id": 1, "name": "Alice"})
 
-    with pytest.raises(ValueError, match="already exists"):
+    with pytest.raises(DuplicateInstanceError, match="already exists"):
         store.create("User", {"id": 1, "name": "Bob"})
 
 
@@ -211,13 +216,13 @@ def test_update_preserves_id(loaded_store: DataStore) -> None:
 
 def test_update_nonexistent_instance_raises_error(loaded_store: DataStore) -> None:
     """Test updating non-existent instance raises error."""
-    with pytest.raises(ValueError, match="not found"):
+    with pytest.raises(InstanceNotFoundError, match="not found"):
         loaded_store.update("User", 999, {"name": "Ghost"})
 
 
 def test_update_nonexistent_model_raises_error(loaded_store: DataStore) -> None:
     """Test updating non-existent model raises error."""
-    with pytest.raises(ValueError, match="not found"):
+    with pytest.raises(InstanceNotFoundError, match="not found"):
         loaded_store.update("NonExistent", 1, {"name": "Ghost"})
 
 
@@ -362,19 +367,19 @@ def test_list_empty_model(store: DataStore) -> None:
 
 def test_list_invalid_page_raises_error(loaded_store: DataStore) -> None:
     """Test that invalid page number raises error."""
-    with pytest.raises(ValueError, match="Page must be"):
+    with pytest.raises(StoreError, match="Invalid page number"):
         loaded_store.list("User", page=0, page_size=10)
 
-    with pytest.raises(ValueError, match="Page must be"):
+    with pytest.raises(StoreError, match="Invalid page number"):
         loaded_store.list("User", page=-1, page_size=10)
 
 
 def test_list_invalid_page_size_raises_error(loaded_store: DataStore) -> None:
     """Test that invalid page size raises error."""
-    with pytest.raises(ValueError, match="Page size must be"):
+    with pytest.raises(StoreError, match="Invalid page size"):
         loaded_store.list("User", page=1, page_size=0)
 
-    with pytest.raises(ValueError, match="Page size must be"):
+    with pytest.raises(StoreError, match="Invalid page size"):
         loaded_store.list("User", page=1, page_size=MAX_PAGE_SIZE + 1)
 
 

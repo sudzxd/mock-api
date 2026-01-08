@@ -35,6 +35,7 @@ from mock_api.core.constants import (
     DEFAULT_SEED_COUNT,
     DEFAULT_STRICT_MODE,
 )
+from mock_api.core.exceptions import ConfigFileNotFoundError, ConfigParseError
 from pydantic import ValidationError
 
 # =============================================================================
@@ -250,7 +251,7 @@ def test_load_config_file_json(temp_config_json: Path) -> None:
 
 def test_load_config_file_not_found():
     """Test loading non-existent config file."""
-    with pytest.raises(FileNotFoundError):
+    with pytest.raises(ConfigFileNotFoundError):
         load_config_file(Path("nonexistent.yml"))
 
 
@@ -259,7 +260,7 @@ def test_load_config_file_invalid_json(tmp_path: Path) -> None:
     config_file = tmp_path / "invalid.json"
     config_file.write_text("{invalid json")
 
-    with pytest.raises(ValueError, match="Invalid JSON"):
+    with pytest.raises(ConfigParseError, match="Invalid JSON"):
         load_config_file(config_file)
 
 
@@ -270,7 +271,7 @@ def test_load_config_file_invalid_yaml(tmp_path: Path) -> None:
     config_file = tmp_path / "invalid.yml"
     config_file.write_text("invalid: yaml: syntax:")
 
-    with pytest.raises(ValueError, match="Invalid YAML"):
+    with pytest.raises(ConfigParseError, match="Invalid YAML"):
         load_config_file(config_file)
 
 
@@ -279,7 +280,7 @@ def test_load_config_file_unsupported_format(tmp_path: Path) -> None:
     config_file = tmp_path / "config.txt"
     config_file.write_text("some content")
 
-    with pytest.raises(ValueError, match="Unsupported config file format"):
+    with pytest.raises(ConfigParseError, match="Unsupported format"):
         load_config_file(config_file)
 
 

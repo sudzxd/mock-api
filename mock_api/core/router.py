@@ -45,6 +45,7 @@ from .constants import (
     ResponseKey,
     RouteDescription,
 )
+from .exceptions import InstanceNotFoundError
 from .store import DataStore
 from .types import ModelSchema, QueryResult
 
@@ -382,7 +383,7 @@ class RouterGenerator:
                 raise HTTPException(
                     status_code=HTTPStatus.UNPROCESSABLE_ENTITY, detail=e.errors()
                 ) from None
-            except ValueError:
+            except InstanceNotFoundError:
                 raise HTTPException(
                     status_code=HTTPStatus.NOT_FOUND, detail=RouteDescription.NOT_FOUND
                 ) from None
