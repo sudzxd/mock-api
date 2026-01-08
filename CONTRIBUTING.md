@@ -80,14 +80,57 @@ make pre-commit
 - Use American English spelling
 - Write clear, self-documenting code
 
-## Pull Request Process
+## Git Workflow
 
-1. Fork the repository and create a new branch from `main`
+### Branch Naming Convention
+
+All branches should be created off of `develop` and follow this naming pattern:
+
+```
+<type>/<initials>/<issue-number>-<description>
+```
+
+Components:
+- **type**: `feat`, `fix`, `docs`, `refactor`, `test`, `chore`
+- **initials**: Your initials (e.g., `ss` for Sudarshan Satyendra Sagar)
+- **issue-number**: GitHub issue number
+- **description**: Short kebab-case description
+
+Examples:
+```bash
+feat/ss/1-add-config
+fix/ss/5-typescript-parser
+docs/ss/4-getting-started
+refactor/ss/10-store-optimization
+test/ss/23-performance-benchmarks
+```
+
+### Development Workflow
+
+1. Create a branch off `develop`:
+```bash
+git checkout develop
+git pull origin develop
+git checkout -b feat/ss/1-add-config
+```
+
 2. Make your changes following the code style guidelines
-3. Add or update tests to cover your changes
-4. Ensure all tests pass and quality checks succeed
-5. Update documentation if needed
-6. Submit a pull request with a clear description of the changes
+
+3. Run quality checks:
+```bash
+make check
+```
+
+4. Commit your changes with conventional commit messages
+
+5. Push your branch:
+```bash
+git push origin feat/ss/1-add-config
+```
+
+6. Create a pull request targeting `develop` branch
+
+7. After PR approval and merge, delete your feature branch
 
 ### Commit Messages
 
