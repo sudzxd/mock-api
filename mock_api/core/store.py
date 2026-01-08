@@ -173,9 +173,7 @@ class DataStore:
                 if instance_id > self._id_counters[model_name]:
                     self._id_counters[model_name] = instance_id
 
-            logger.debug(
-                f"Created {model_name} with {PRIMARY_KEY_FIELD}={instance_id}"
-            )
+            logger.debug(f"Created {model_name} with {PRIMARY_KEY_FIELD}={instance_id}")
             return deepcopy(instance)
 
     def read(self, model_name: str, instance_id: int) -> dict[str, Any] | None:
@@ -243,9 +241,7 @@ class DataStore:
             instance.update(data)
             instance[PRIMARY_KEY_FIELD] = instance_id
 
-            logger.debug(
-                f"Updated {model_name} with {PRIMARY_KEY_FIELD}={instance_id}"
-            )
+            logger.debug(f"Updated {model_name} with {PRIMARY_KEY_FIELD}={instance_id}")
             return deepcopy(instance)
 
     def delete(self, model_name: str, instance_id: int) -> bool:

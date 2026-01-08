@@ -30,6 +30,7 @@ from pathlib import Path
 import click
 
 # Project/local
+from ..core.config import get_config
 from ..core.generator import DataGenerator
 from ..core.parser import SchemaParser
 from ..core.server import Server
@@ -40,9 +41,6 @@ from ..utils.logger import get_logger
 # =============================================================================
 logger = get_logger(__name__)
 
-DEFAULT_HOST = "127.0.0.1"
-DEFAULT_PORT = 8000
-DEFAULT_COUNT = 10
 DEFAULT_OUTPUT_DIR = "data"
 
 
@@ -82,23 +80,20 @@ def cli() -> None:
     "--host",
     "-h",
     type=str,
-    default=DEFAULT_HOST,
-    show_default=True,
-    help="Host to bind the server to",
+    default=None,
+    help="Host to bind the server to (default: from config or 0.0.0.0)",
 )
 @click.option(
     "--port",
     "-p",
     type=int,
-    default=DEFAULT_PORT,
-    show_default=True,
-    help="Port to bind the server to",
+    default=None,
+    help="Port to bind the server to (default: from config or 3000)",
 )
 @click.option(
     "--reload/--no-reload",
-    default=False,
-    show_default=True,
-    help="Enable auto-reload on code changes",
+    default=None,
+    help="Enable auto-reload on code changes (default: from config or false)",
 )
 @click.option(
     "--generate-data/--no-generate-data",
@@ -110,9 +105,8 @@ def cli() -> None:
     "--data-count",
     "-c",
     type=int,
-    default=DEFAULT_COUNT,
-    show_default=True,
-    help="Number of instances to generate per model",
+    default=None,
+    help="Number of instances to generate per model (default: from config or 10)",
 )
 @click.option(
     "--prefix",
@@ -121,40 +115,70 @@ def cli() -> None:
     show_default=True,
     help="API route prefix",
 )
+@click.option(
+    "--config",
+    type=click.Path(exists=True, dir_okay=False, path_type=Path),
+    default=None,
+    help="Path to configuration file (YAML or JSON)",
+)
 def serve(
     models: Path,
-    host: str,
-    port: int,
-    reload: bool,
+    host: str | None,
+    port: int | None,
+    reload: bool | None,
     generate_data: bool,
-    data_count: int,
+    data_count: int | None,
     prefix: str,
+    config: Path | None,
 ) -> None:
     """Start the development server.
 
     Launches a FastAPI development server with your mock API.
     The server provides OpenAPI docs at /docs and /redoc.
 
+    Args:
+        models: Path to Python file containing Pydantic models.
+        host: Host to bind the server to.
+        port: Port to bind the server to.
+        reload: Enable auto-reload on code changes.
+        generate_data: Pre-populate with generated data.
+        data_count: Number of instances to generate per model.
+        prefix: API route prefix.
+        config: Path to configuration file (YAML or JSON).
+
     Example:
         $ mock-api serve --models models.py --generate-data --data-count 50
         $ mock-api serve -m models.py --port 3000 --reload
     """
     try:
+        # Load configuration
+        cfg = get_config(config_file=config)
+
+        # Apply logging configuration
+        cfg.apply_logging_config()
+
+        # Use CLI args if provided, otherwise use config values
+        final_host = host if host is not None else cfg.host
+        final_port = port if port is not None else cfg.port
+        final_reload = reload if reload is not None else cfg.auto_reload
+        final_data_count = data_count if data_count is not None else cfg.seed_count
+
         click.echo("🚀 Starting Mock API Server...")
         click.echo(f"📁 Models file: {models}")
-        click.echo(f"🌐 Server: http://{host}:{port}")
-        click.echo(f"📚 Docs: http://{host}:{port}/docs")
+        click.echo(f"🌐 Server: http://{final_host}:{final_port}")
+        click.echo(f"📚 Docs: http://{final_host}:{final_port}/docs")
 
         # Create server
         server = Server(
             str(models),
             prefix=prefix,
             generate_data=generate_data,
-            data_count=data_count,
+            data_count=final_data_count,
+            config=cfg,
         )
 
         if generate_data:
-            click.echo(f"📊 Pre-populating {data_count} instances per model...")
+            click.echo(f"📊 Pre-populating {final_data_count} instances per model...")
 
         # Create app
         app = server.create_app()
@@ -175,9 +199,9 @@ def serve(
         # Run server
         uvicorn.run(
             app,
-            host=host,
-            port=port,
-            reload=reload,
+            host=final_host,
+            port=final_port,
+            reload=final_reload,
             log_level="info",
         )
 
@@ -215,9 +239,8 @@ def serve(
     "--count",
     "-c",
     type=int,
-    default=DEFAULT_COUNT,
-    show_default=True,
-    help="Number of instances to generate per model",
+    default=None,
+    help="Number of instances to generate per model (default: from config or 10)",
 )
 @click.option(
     "--format",
@@ -228,21 +251,45 @@ def serve(
     show_default=True,
     help="Output format for generated data",
 )
-def generate(models: Path, output: Path, count: int, output_format: str) -> None:  # noqa: ARG001
+@click.option(
+    "--config",
+    type=click.Path(exists=True, dir_okay=False, path_type=Path),
+    default=None,
+    help="Path to configuration file (YAML or JSON)",
+)
+def generate(
+    models: Path,
+    output: Path,
+    count: int | None,
+    output_format: str,
+    config: Path | None,
+) -> None:
     """Generate mock data files.
 
     Creates JSON files with realistic test data for each model.
     Respects field patterns and foreign key relationships.
+
+    Args:
+        models: Path to Python file containing Pydantic models.
+        output: Output directory for generated data files.
+        count: Number of instances to generate per model.
+        config: Path to configuration file (YAML or JSON).
 
     Example:
         $ mock-api generate --models models.py --count 100 --output ./data
         $ mock-api generate -m models.py -c 50 -o ./fixtures
     """
     try:
+        # Load configuration
+        cfg = get_config(config_file=config)
+
+        # Use CLI arg if provided, otherwise use config value
+        final_count = count if count is not None else cfg.seed_count
+
         click.echo("📊 Generating mock data...")
         click.echo(f"📁 Models file: {models}")
         click.echo(f"📂 Output directory: {output}")
-        click.echo(f"🔢 Count per model: {count}")
+        click.echo(f"🔢 Count per model: {final_count}")
         click.echo()
 
         # Parse models
@@ -256,16 +303,16 @@ def generate(models: Path, output: Path, count: int, output_format: str) -> None
         output.mkdir(parents=True, exist_ok=True)
 
         # Generate data
-        generator = DataGenerator(schemas)
+        generator = DataGenerator(schemas, config=cfg)
         total_generated = 0
 
         for model_name in schemas:
-            click.echo(f"⚙️  Generating {count} {model_name} instances...")
+            click.echo(f"⚙️  Generating {final_count} {model_name} instances...")
 
-            data = generator.generate(model_name, count=count)
+            data = generator.generate(model_name, count=final_count)
 
             # Write to file
-            output_file = output / f"{model_name.lower()}.json"
+            output_file = output / f"{model_name.lower()}.{output_format}"
             with output_file.open("w") as f:
                 json.dump(data, f, indent=2, default=str)
 
@@ -309,6 +356,10 @@ def validate(models: Path, verbose: bool) -> None:
 
     Checks that the models file is valid and can be parsed.
     Optionally shows detailed information about each model.
+
+    Args:
+        models: Path to Python file containing Pydantic models.
+        verbose: Show detailed model information.
 
     Example:
         $ mock-api validate --models models.py

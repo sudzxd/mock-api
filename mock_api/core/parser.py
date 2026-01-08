@@ -166,9 +166,7 @@ class SchemaParser:
             {'User', 'Contact'}
         """
         return {
-            model
-            for model, fields in self._field_index.items()
-            if field_name in fields
+            model for model, fields in self._field_index.items() if field_name in fields
         }
 
     def get_models_with_type(self, field_type: type) -> set[str]:

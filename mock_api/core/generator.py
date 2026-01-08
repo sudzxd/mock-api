@@ -22,12 +22,12 @@ from faker import Faker
 
 # Project/local
 from ..utils.logger import get_logger
+from .config import Config, get_config
 from .constants import (
     CREATED_AT_MAX_DAYS_AGO,
     DEFAULT_FK_RANGE_MAX,
     DEFAULT_FK_RANGE_MIN,
     DEFAULT_GENERATION_COUNT,
-    DEFAULT_LOCALE,
     OPTIONAL_FIELD_NULL_PROBABILITY,
     PARAGRAPH_SENTENCE_COUNT,
     PRIMARY_KEY_FIELD,
@@ -75,21 +75,28 @@ class DataGenerator:
     def __init__(
         self,
         schemas: dict[str, ModelSchema],
-        locale: str = DEFAULT_LOCALE,
+        locale: str | None = None,
         seed: int | None = None,
+        config: Config | None = None,
     ) -> None:
         """Initialize the data generator.
 
         Args:
             schemas: Dictionary of model schemas from parser.
-            locale: Faker locale for generating localized data.
+            locale: Faker locale for generating localized data (overrides config).
             seed: Random seed for reproducible data generation.
+            config: Configuration instance (auto-loads if not provided).
 
         Example:
             >>> generator = DataGenerator(schemas, locale="en_US", seed=42)
         """
         self.schemas = schemas
-        self.faker = Faker(locale)
+        self.config = config or get_config()
+
+        # Use explicit locale if provided, otherwise use config
+        final_locale = locale if locale is not None else self.config.locale
+        self.faker = Faker(final_locale)
+
         if seed is not None:
             Faker.seed(seed)
             random.seed(seed)
