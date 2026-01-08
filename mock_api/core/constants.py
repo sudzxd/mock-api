@@ -36,6 +36,24 @@ class HTTPMethod(StrEnum):
     PATCH = "PATCH"
 
 
+class LogLevel(StrEnum):
+    """Logging level options."""
+
+    DEBUG = "DEBUG"
+    INFO = "INFO"
+    WARNING = "WARNING"
+    ERROR = "ERROR"
+    CRITICAL = "CRITICAL"
+
+
+class ConfigFormat(StrEnum):
+    """Supported configuration file formats."""
+
+    YAML = "yaml"
+    YML = "yml"
+    JSON = "json"
+
+
 class HTTPStatus:
     """HTTP status codes for API responses."""
 
@@ -96,12 +114,70 @@ class FieldPattern(StrEnum):
     WEBSITE = "website"
 
 
+class FileExtension(StrEnum):
+    """File extensions for various file types."""
+
+    JSON = ".json"
+    YAML = ".yaml"
+    YML = ".yml"
+    PYTHON = ".py"
+
+
+class ConfigField(StrEnum):
+    """Configuration field names."""
+
+    SEED_COUNT = "seed_count"
+    PORT = "port"
+    HOST = "host"
+    LOCALE = "locale"
+    LOG_LEVEL = "log_level"
+    CORS_ENABLED = "cors_enabled"
+    CORS_ORIGINS = "cors_origins"
+    AUTO_RELOAD = "auto_reload"
+    STRICT_MODE = "strict_mode"
+
+
+class BooleanValue(StrEnum):
+    """String values that represent boolean true."""
+
+    TRUE = "true"
+    ONE = "1"
+    YES = "yes"
+    ON = "on"
+
+
+# =============================================================================
+# CONFIGURATION CONSTANTS
+# =============================================================================
+
+# Configuration defaults
+DEFAULT_SEED_COUNT = 10
+DEFAULT_PORT = 3000
+DEFAULT_HOST = "0.0.0.0"
+DEFAULT_LOG_LEVEL = LogLevel.INFO
+DEFAULT_CORS_ENABLED = True
+DEFAULT_CORS_ORIGINS = ["*"]
+DEFAULT_AUTO_RELOAD = False
+DEFAULT_STRICT_MODE = False
+
+# Configuration file names (search order)
+CONFIG_FILE_NAMES = ["mock-api.yml", "mock-api.yaml", "mock-api.json"]
+
+# Environment variable prefix
+ENV_VAR_PREFIX = "MOCK_API_"
+
+# Configuration validation limits
+MIN_PORT = 1
+MAX_PORT = 65535
+MIN_SEED_COUNT = 1
+MAX_SEED_COUNT = 10000
+
 # =============================================================================
 # PARSER CONSTANTS
 # =============================================================================
 
 # File validation
-PYTHON_FILE_EXTENSION = ".py"
+PYTHON_FILE_EXTENSION = FileExtension.PYTHON
 
 # Foreign key detection
 FOREIGN_KEY_SUFFIX = "_id"

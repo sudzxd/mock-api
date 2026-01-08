@@ -24,6 +24,7 @@ from fastapi import FastAPI
 
 # Project/local
 from ..utils.logger import get_logger
+from .config import Config, get_config
 from .constants import API_VERSION_PREFIX, DEFAULT_GENERATION_COUNT
 from .generator import DataGenerator
 from .parser import SchemaParser
@@ -64,6 +65,7 @@ class Server:
         prefix: str = API_VERSION_PREFIX,
         generate_data: bool = False,
         data_count: int = DEFAULT_GENERATION_COUNT,
+        config: Config | None = None,
     ) -> None:
         """Initialize server components.
 
@@ -72,6 +74,7 @@ class Server:
             prefix: API prefix for all routes (default: "/api/v1").
             generate_data: Whether to pre-populate with generated data.
             data_count: Number of instances to generate per model.
+            config: Configuration instance (auto-loads if not provided).
 
         Example:
             >>> server = Server(
@@ -85,6 +88,7 @@ class Server:
         self.prefix = prefix
         self.generate_data = generate_data
         self.data_count = data_count
+        self.config = config or get_config()
 
         # Initialize components
         logger.info(f"Initializing server from {models_file}")
@@ -119,6 +123,19 @@ class Server:
             redoc_url="/redoc",
         )
 
+        # Configure CORS if enabled
+        if self.config.cors_enabled:
+            from fastapi.middleware.cors import CORSMiddleware
+
+            app.add_middleware(
+                CORSMiddleware,
+                allow_origins=self.config.cors_origins,
+                allow_credentials=True,
+                allow_methods=["*"],
+                allow_headers=["*"],
+            )
+            logger.info(f"CORS enabled for origins: {self.config.cors_origins}")
+
         # Generate and include routes
         router = self.router_generator.generate_routes()
         app.include_router(router)
@@ -141,7 +158,7 @@ class Server:
 
         Time Complexity: O(n * m) where n=models, m=data_count
         """
-        generator = DataGenerator(self.schemas)
+        generator = DataGenerator(self.schemas, config=self.config)
 
         for model_name in self.schemas:
             logger.debug(f"Generating {self.data_count} {model_name} instances")
