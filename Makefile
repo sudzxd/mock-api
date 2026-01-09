@@ -212,7 +212,20 @@ deps: ## Show dependency tree
 
 benchmark: ## Run performance benchmarks
 	@echo "$(BLUE)Running benchmarks...$(NC)"
-	@echo "$(YELLOW)⚠ Benchmark suite not configured yet$(NC)"
+	uv run pytest tests/benchmarks/ --benchmark-only -v
+
+benchmark-compare: ## Run benchmarks with comparison to baseline
+	@echo "$(BLUE)Running benchmarks with comparison...$(NC)"
+	uv run pytest tests/benchmarks/ --benchmark-only --benchmark-compare -v
+
+benchmark-save: ## Run benchmarks and save as new baseline
+	@echo "$(BLUE)Running benchmarks and saving baseline...$(NC)"
+	uv run pytest tests/benchmarks/ --benchmark-only --benchmark-autosave -v
+
+benchmark-report: ## Generate benchmark histogram report
+	@echo "$(BLUE)Generating benchmark report...$(NC)"
+	uv run pytest tests/benchmarks/ --benchmark-only --benchmark-histogram -v
+	@echo "$(GREEN)Report saved to .benchmarks/$(NC)"
 
 ##@ Examples
 

@@ -145,12 +145,12 @@ class Server:
         # Optionally pre-populate with generated data
         if self.generate_data:
             logger.info(f"Pre-populating data ({self.data_count} per model)")
-            self._populate_data()
+            self.populate_data()
 
         self._app = app
         return app
 
-    def _populate_data(self) -> None:
+    def populate_data(self) -> None:
         """Pre-populate store with generated data.
 
         Uses DataGenerator to create realistic test data for all models.

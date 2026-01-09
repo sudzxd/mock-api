@@ -167,6 +167,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -181,40 +183,57 @@ jobs:
       - name: Install dependencies
         run: uv sync --all-extras
 
-      - name: Install performance testing tools
-        run: uv pip install pytest-benchmark memory-profiler
+      - name: Download previous benchmark results
+        uses: actions/cache@v4
+        with:
+          path: .benchmarks
+          key: benchmark-results-${{ github.ref_name }}
+          restore-keys: |
+            benchmark-results-develop
+            benchmark-results-
 
-      - name: Run performance benchmarks
+      - name: Run benchmarks
         run: |
-          # Create benchmark test file
-          cat > test_benchmarks.py << 'EOF'
-          import pytest
-          from mock_api.core.parser import ModelParser
-          from mock_api.core.generator import DataGenerator
-          from pydantic import BaseModel
+          uv run pytest tests/benchmarks/ \
+            --benchmark-only \
+            --benchmark-json=benchmark-results.json \
+            --benchmark-autosave \
+            --benchmark-save-data \
+            --benchmark-compare \
+            --benchmark-compare-fail=mean:20% \
+            -v
 
-          class TestModel(BaseModel):
-              id: int
-              name: str
-              email: str
+      - name: Store benchmark results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: benchmark-results-${{ github.sha }}
+          path: |
+            benchmark-results.json
+            .benchmarks/
+          retention-days: 90
 
-          @pytest.mark.benchmark
-          def test_parser_performance(benchmark):
-              parser = ModelParser()
-              result = benchmark(parser.parse_file, "test_models.py")
-              assert len(result) > 0
+      - name: Comment benchmark results on commit
+        if: github.event_name == 'push'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const data = JSON.parse(fs.readFileSync('benchmark-results.json', 'utf8'));
 
-          @pytest.mark.benchmark
-          def test_generator_performance(benchmark):
-              generator = DataGenerator()
-              result = benchmark(generator.generate, TestModel, count=100)
-              assert len(result) == 100
-          EOF
+            const benchmarks = data.benchmarks.map(b =>
+              `| ${b.name} | ${(b.stats.mean * 1000).toFixed(2)}ms | ${(b.stats.stddev * 1000).toFixed(2)}ms |`
+            ).join('\n');
 
-          # Run benchmarks if tests exist
-          if [ -f test_benchmarks.py ]; then
-            uv run pytest test_benchmarks.py -v --benchmark-only || echo "Benchmarks skipped"
-          fi
+            const body = `## Benchmark Results\n\n| Benchmark | Mean | Std Dev |\n` +
+              `|-----------|------|---------|\\n${benchmarks}`;
+
+            github.rest.repos.createCommitComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              commit_sha: context.sha,
+              body: body
+            });
 
   security-full:
     name: Full security scan
