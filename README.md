@@ -2,7 +2,7 @@
 
 **Stop writing JSON files. Start with types.**
 
-Generate full-featured REST APIs from your Pydantic models or TypeScript types in seconds.
+Generate full-featured REST APIs from your Pydantic models in seconds.
 
 ## Quick Start
 
@@ -10,35 +10,21 @@ Generate full-featured REST APIs from your Pydantic models or TypeScript types i
 # Install
 pip install mock-api
 
-# Run
-mock-api run models.py --seed 50
+# Initialize project
+mock-api init
 
-# Get a full REST API
-# GET    /users
-# GET    /users/:id
-# POST   /users
-# PUT    /users/:id
-# DELETE /users/:id
+# Run server
+mock-api serve --models models.py --generate-data
 ```
 
 ## Features
 
-- 🚀 **Zero config** - Point at your schema file and go
-- 🎯 **Type-safe** - Built on Pydantic for automatic validation
-- 🤖 **Smart data** - Realistic fake data based on field names
-- 🔗 **Auto relationships** - Detects foreign keys, creates nested routes
-- 💾 **Stateful** - CRUD operations persist during session
-- 🔄 **Proxy mode** - Mix mock and real endpoints
-- 🐍 **Python native** - First-class Pydantic support
-- 📘 **TypeScript support** - Parse TS types too
-
-## Why mock-api?
-
-**json-server**: Manual JSON files that get stale
-**Mockoon**: GUI clicking for every endpoint
-**Prism**: Requires full OpenAPI spec
-
-**mock-api**: Your types ARE your API contract.
+- **Zero config** - Point at your schema file and go
+- **Type-safe** - Built on Pydantic for automatic validation
+- **Smart data** - Realistic fake data based on field names
+- **Auto relationships** - Detects foreign keys, creates nested routes
+- **Stateful** - CRUD operations persist during session
+- **OpenAPI** - Auto-generated interactive docs
 
 ## Example
 
@@ -61,29 +47,41 @@ class Post(BaseModel):
 ```
 
 ```bash
-mock-api run models.py --seed 20
-# Server running on http://localhost:3000
-# Seeded 20 users, 60 posts
+mock-api serve --models models.py --generate-data --data-count 50
 ```
 
-```bash
-curl http://localhost:3000/users/1
-# {
-#   "id": 1,
-#   "name": "Sarah Chen",
-#   "email": "sarah.chen@company.com",
-#   "created_at": "2025-01-05T10:30:00Z"
-# }
+Access your API at `http://localhost:3000/api/v1` with auto-generated endpoints:
+- `GET /users`, `GET /users/:id`
+- `POST /users`, `PUT /users/:id`, `DELETE /users/:id`
+- Interactive docs at `/docs`
 
-curl http://localhost:3000/posts?author_id=1
-# Returns all posts by user 1
-```
+## Why mock-api?
+
+**json-server:** Manual JSON files that get stale
+**Mockoon:** GUI clicking for every endpoint
+**Prism:** Requires full OpenAPI spec
+
+**mock-api:** Your types ARE your API contract.
+
+## Documentation
+
+- [Getting Started](docs/getting-started.md) - Installation and first project
+- [CLI Reference](docs/cli-reference.md) - All commands and options
+- [API Reference](docs/api-reference.md) - Python API and REST endpoints
+- [Examples](docs/examples.md) - Real-world use cases
+- [FAQ](docs/faq.md) - Common questions
+- [Architecture](docs/architecture.md) - System design
+- [Troubleshooting](docs/troubleshooting.md) - Solutions to common issues
+
+### Contributing
+
+- [Development Setup](docs/development/setup.md)
+- [Guidelines](docs/development/guidelines.md)
+- [Testing](docs/development/testing.md)
 
 ## Status
 
-🚧 **Under active development** - Not yet ready for production use.
-
-Star this repo to follow progress!
+Under active development.
 
 ## License
 
