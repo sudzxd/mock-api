@@ -11,8 +11,6 @@ from __future__ import annotations
 # Standard library
 from typing import Any
 
-# Third-party
-
 # =============================================================================
 # MODULE CONTENTS
 # =============================================================================

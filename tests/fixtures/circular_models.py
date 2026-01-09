@@ -1,8 +1,17 @@
 """Test fixtures for circular dependencies."""
 
+from __future__ import annotations
+
+# =============================================================================
+# IMPORTS
+# =============================================================================
+# Third-party
 from pydantic import BaseModel
 
 
+# =============================================================================
+# TEST MODELS
+# =============================================================================
 class User(BaseModel):
     """User with manager relationship (self-referential)."""
 

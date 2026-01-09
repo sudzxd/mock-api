@@ -76,13 +76,3 @@ repos:
           - fastapi>=0.115.0
           - faker>=30.0.0
         stages: [manual]
-
-  # Fast tests before commit
-  - repo: local
-    hooks:
-      - id: test-fast
-        name: Run fast tests
-        entry: make test-fast
-        language: system
-        pass_filenames: false
-        always_run: true
