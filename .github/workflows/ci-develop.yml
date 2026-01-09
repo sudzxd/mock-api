@@ -194,14 +194,24 @@ jobs:
 
       - name: Run benchmarks
         run: |
-          uv run pytest tests/benchmarks/ \
-            --benchmark-only \
-            --benchmark-json=benchmark-results.json \
-            --benchmark-autosave \
-            --benchmark-save-data \
-            --benchmark-compare \
-            --benchmark-compare-fail=mean:20% \
-            -v
+          # Run benchmarks with comparison if baseline exists, otherwise just save
+          if [ -d .benchmarks ]; then
+            uv run pytest tests/benchmarks/ \
+              --benchmark-only \
+              --benchmark-json=benchmark-results.json \
+              --benchmark-autosave \
+              --benchmark-save-data \
+              --benchmark-compare \
+              --benchmark-compare-fail=mean:20% \
+              -v
+          else
+            uv run pytest tests/benchmarks/ \
+              --benchmark-only \
+              --benchmark-json=benchmark-results.json \
+              --benchmark-autosave \
+              --benchmark-save-data \
+              -v
+          fi
 
       - name: Store benchmark results
         if: always()
