@@ -125,7 +125,7 @@ jobs:
 
       - name: Start mock API server
         run: |
-          uv run mock-api run test_models.py --port 3000 --seed 10 &
+          PYTHONPATH=. uv run python -m mock_api.cli.main serve --models test_models.py --port 3000 --generate-data 10 &
           echo $! > server.pid
           sleep 5
 
