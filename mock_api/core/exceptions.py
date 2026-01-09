@@ -13,9 +13,12 @@ Exception Hierarchy:
     │   ├── SchemaFileNotFoundError
     │   └── SchemaValidationError
     ├── ModelNotFoundError
-    └── StoreError
-        ├── InstanceNotFoundError
-        └── DuplicateInstanceError
+    ├── StoreError
+    │   ├── InstanceNotFoundError
+    │   └── DuplicateInstanceError
+    └── InitializationError
+        ├── FileExistsError
+        └── InvalidProjectNameError
 
 Example:
     >>> from mock_api.core.exceptions import ModelNotFoundError
@@ -289,3 +292,58 @@ class DuplicateInstanceError(StoreError):
         super().__init__(message, suggestion)
         self.model_name = model_name
         self.instance_id = instance_id
+
+
+# =============================================================================
+# INITIALIZATION ERRORS
+# =============================================================================
+
+
+class InitializationError(MockAPIException):
+    """Base exception for CLI init command errors."""
+
+    pass
+
+
+class FileExistsError(InitializationError):
+    """Raised when files already exist and --force flag is not used.
+
+    Example:
+        >>> raise FileExistsError(["models.py", "mock-api.yml"])
+        FileExistsError: Files already exist: models.py, mock-api.yml
+    """
+
+    def __init__(self, files: list[str]) -> None:
+        """Initialize the exception.
+
+        Args:
+            files: List of existing file paths.
+        """
+        file_list = ", ".join(files)
+        message = f"Files already exist: {file_list}"
+        suggestion = "Use --force to overwrite existing files or remove them manually."
+        super().__init__(message, suggestion)
+        self.files = files
+
+
+class InvalidProjectNameError(InitializationError):
+    """Raised when project name contains invalid characters.
+
+    Example:
+        >>> raise InvalidProjectNameError("my project!")
+        InvalidProjectNameError: Invalid project name: 'my project!'
+    """
+
+    def __init__(self, project_name: str) -> None:
+        """Initialize the exception.
+
+        Args:
+            project_name: The invalid project name.
+        """
+        message = f"Invalid project name: '{project_name}'"
+        suggestion = (
+            "Project name must contain only alphanumeric characters, "
+            "hyphens, and underscores."
+        )
+        super().__init__(message, suggestion)
+        self.project_name = project_name

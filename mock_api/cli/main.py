@@ -4,11 +4,13 @@ This module provides the command-line interface for creating and managing
 mock APIs from Pydantic models.
 
 Commands:
+- init: Initialize a new mock API project
 - serve: Start the development server
 - generate: Generate mock data files
 - validate: Validate Pydantic models file
 
 Example:
+    $ mock-api init --template blog
     $ mock-api serve --models models.py --generate-data
     $ mock-api generate --models models.py --count 100
     $ mock-api validate --models models.py
@@ -23,6 +25,7 @@ from __future__ import annotations
 # =============================================================================
 # Standard library
 import json
+import re
 import sys
 from pathlib import Path
 
@@ -31,10 +34,27 @@ import click
 
 # Project/local
 from ..core.config import get_config
+from ..core.constants import (
+    DEFAULT_CONFIG_FILENAME,
+    DEFAULT_GITIGNORE_FILENAME,
+    DEFAULT_MODELS_FILENAME,
+    DEFAULT_PORT,
+    DEFAULT_PROJECT_NAME,
+    DEFAULT_README_FILENAME,
+    DEFAULT_SEED_COUNT,
+    MAX_PORT,
+    MAX_SEED_COUNT,
+    MIN_PORT,
+    MIN_SEED_COUNT,
+    PROJECT_NAME_PATTERN,
+    TemplateType,
+)
+from ..core.exceptions import FileExistsError, InvalidProjectNameError
 from ..core.generator import DataGenerator
 from ..core.parser import SchemaParser
 from ..core.server import Server
 from ..utils.logger import get_logger
+from .templates import GITIGNORE_CONTENT, get_template
 
 # =============================================================================
 # TYPES & CONSTANTS
@@ -42,6 +62,40 @@ from ..utils.logger import get_logger
 logger = get_logger(__name__)
 
 DEFAULT_OUTPUT_DIR = "data"
+
+
+# =============================================================================
+# HELPER FUNCTIONS
+# =============================================================================
+
+
+def _validate_project_name(project_name: str) -> None:
+    """Validate project name format.
+
+    Args:
+        project_name: Project name to validate
+
+    Raises:
+        InvalidProjectNameError: If project name is invalid
+    """
+    if not re.match(PROJECT_NAME_PATTERN, project_name):
+        raise InvalidProjectNameError(project_name)
+
+
+def _check_existing_files(files_to_check: dict[str, Path], force: bool) -> None:
+    """Check for existing files and raise error if found.
+
+    Args:
+        files_to_check: Dictionary of file descriptions to paths
+        force: Whether to skip the check (force overwrite)
+
+    Raises:
+        FileExistsError: If files exist and force is False
+    """
+    existing_files = [str(path) for path in files_to_check.values() if path.exists()]
+
+    if existing_files and not force:
+        raise FileExistsError(existing_files)
 
 
 # =============================================================================
@@ -409,6 +463,227 @@ def validate(models: Path, verbose: bool) -> None:
     except Exception as e:
         click.echo(f"❌ Error: {e}", err=True)
         logger.exception("Validation failed")
+        sys.exit(1)
+
+
+# =============================================================================
+# INIT COMMAND
+# =============================================================================
+
+
+@cli.command()
+@click.option(
+    "--project-name",
+    type=str,
+    default=None,
+    help=f"Project name (default: {DEFAULT_PROJECT_NAME})",
+)
+@click.option(
+    "--template",
+    type=click.Choice([t.value for t in TemplateType], case_sensitive=False),
+    default=None,
+    help="Project template (basic, blog, ecommerce, custom)",
+)
+@click.option(
+    "--models-file",
+    type=str,
+    default=None,
+    help=f"Models file path (default: {DEFAULT_MODELS_FILENAME})",
+)
+@click.option(
+    "--seed-count",
+    type=int,
+    default=None,
+    help=f"Initial seed data count (default: {DEFAULT_SEED_COUNT})",
+)
+@click.option(
+    "--port",
+    type=int,
+    default=None,
+    help=f"Server port (default: {DEFAULT_PORT})",
+)
+@click.option(
+    "--force",
+    is_flag=True,
+    default=False,
+    help="Overwrite existing files",
+)
+def init(
+    project_name: str | None,
+    template: str | None,
+    models_file: str | None,
+    seed_count: int | None,
+    port: int | None,
+    force: bool,
+) -> None:
+    """Initialize a new mock API project.
+
+    Creates a new project with models, configuration, and documentation
+    based on the selected template. Supports both interactive and
+    non-interactive modes.
+
+    Args:
+        project_name: Name of the project.
+        template: Template to use (basic, blog, ecommerce, custom).
+        models_file: Path for models file.
+        seed_count: Number of instances to generate per model.
+        port: Server port number.
+        force: Overwrite existing files without prompting.
+
+    Example:
+        # Interactive mode
+        $ mock-api init
+
+        # Non-interactive mode
+        $ mock-api init --template blog --project-name my-blog --seed-count 50
+    """
+    try:
+        click.echo("🚀 Mock API Project Initialization")
+        click.echo()
+
+        # Interactive mode if any option is missing
+        interactive = any(
+            x is None for x in [project_name, template, models_file, seed_count, port]
+        )
+
+        # Get project name
+        if project_name is None:
+            project_name = click.prompt(
+                "📝 Project name", default=DEFAULT_PROJECT_NAME, type=str
+            )
+
+        # Type narrowing: project_name is guaranteed to be str here
+        assert project_name is not None, "Project name cannot be None"
+
+        # Validate project name
+        _validate_project_name(project_name)
+
+        # Get template
+        if template is None:
+            click.echo()
+            click.echo("📦 Choose a template:")
+            click.echo("  [1] basic - Simple API with User model")
+            click.echo("  [2] blog - User, Post, Comment models")
+            click.echo("  [3] ecommerce - Product, Category, Order models")
+            click.echo("  [4] custom - Empty template")
+            click.echo()
+
+            template_choice = click.prompt(
+                "Select template (1-4)", default=1, type=click.IntRange(1, 4)
+            )
+
+            template_map = {
+                1: TemplateType.BASIC,
+                2: TemplateType.BLOG,
+                3: TemplateType.ECOMMERCE,
+                4: TemplateType.CUSTOM,
+            }
+            template = template_map[template_choice].value
+
+        # Get models file path
+        if models_file is None:
+            if interactive:
+                click.echo()
+            models_file = click.prompt(
+                "📁 Models file location", default=DEFAULT_MODELS_FILENAME, type=str
+            )
+
+        # Get seed count
+        if seed_count is None:
+            if interactive:
+                click.echo()
+            seed_count = click.prompt(
+                f"🔢 Initial seed data count ({MIN_SEED_COUNT}-{MAX_SEED_COUNT})",
+                default=DEFAULT_SEED_COUNT,
+                type=click.IntRange(MIN_SEED_COUNT, MAX_SEED_COUNT),
+            )
+
+        # Get port
+        if port is None:
+            if interactive:
+                click.echo()
+            port = click.prompt(
+                f"🌐 Server port ({MIN_PORT}-{MAX_PORT})",
+                default=DEFAULT_PORT,
+                type=click.IntRange(MIN_PORT, MAX_PORT),
+            )
+
+        # Show configuration
+        click.echo()
+        click.echo("✅ Configuration:")
+        click.echo(f"   Project: {project_name}")
+        click.echo(f"   Template: {template}")
+        click.echo(f"   Models: {models_file}")
+        click.echo(f"   Seed count: {seed_count}")
+        click.echo(f"   Port: {port}")
+        click.echo()
+
+        # Confirm in interactive mode
+        if interactive:
+            if not click.confirm("Continue?", default=True):
+                click.echo("❌ Initialization cancelled")
+                sys.exit(0)
+            click.echo()
+
+        # Type narrowing: models_file is guaranteed to be str here
+        assert models_file is not None, "Models file cannot be None"
+
+        # Check for existing files
+        files_to_create = {
+            "models": Path(models_file),
+            "config": Path(DEFAULT_CONFIG_FILENAME),
+            "readme": Path(DEFAULT_README_FILENAME),
+            "gitignore": Path(DEFAULT_GITIGNORE_FILENAME),
+        }
+
+        _check_existing_files(files_to_create, force)
+
+        # Get template
+        template_obj = get_template(TemplateType(template))
+
+        # Generate files
+        click.echo("📝 Creating files...")
+
+        # Create models.py
+        files_to_create["models"].write_text(template_obj.models_content)
+        click.echo(f"✅ Created: {models_file}")
+
+        # Create mock-api.yml
+        config_content = template_obj.config_content.format(
+            seed_count=seed_count, port=port
+        )
+        files_to_create["config"].write_text(config_content)
+        click.echo(f"✅ Created: {DEFAULT_CONFIG_FILENAME}")
+
+        # Create README.md
+        readme_content = template_obj.readme_content.format(
+            project_name=project_name, seed_count=seed_count, port=port
+        )
+        files_to_create["readme"].write_text(readme_content)
+        click.echo(f"✅ Created: {DEFAULT_README_FILENAME}")
+
+        # Create .gitignore
+        files_to_create["gitignore"].write_text(GITIGNORE_CONTENT)
+        click.echo(f"✅ Created: {DEFAULT_GITIGNORE_FILENAME}")
+
+        # Success message
+        click.echo()
+        click.echo("🎉 Project initialized successfully!")
+        click.echo()
+        click.echo("Next steps:")
+        click.echo(f"  1. Review your models in {models_file}")
+        click.echo(
+            f"  2. Start the server: mock-api serve --models {models_file} "
+            "--generate-data"
+        )
+        click.echo(f"  3. Visit http://localhost:{port}/docs")
+
+    except (FileExistsError, InvalidProjectNameError) as e:
+        click.echo(f"❌ Error: {e}", err=True)
+        sys.exit(1)
+    except Exception as e:
+        click.echo(f"❌ Error: {e}", err=True)
+        logger.exception("Project initialization failed")
         sys.exit(1)
 
 

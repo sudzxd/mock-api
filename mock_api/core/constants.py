@@ -296,3 +296,27 @@ URL_PATH_SEPARATOR = "/"
 URL_PLURAL_SUFFIX = "s"
 URL_ID_PARAMETER = "instance_id"
 URL_ID_PATH_SEGMENT = "{instance_id}"
+
+# =============================================================================
+# CLI INIT CONSTANTS
+# =============================================================================
+
+
+class TemplateType(StrEnum):
+    """Available project templates for init command."""
+
+    BASIC = "basic"
+    BLOG = "blog"
+    ECOMMERCE = "ecommerce"
+    CUSTOM = "custom"
+
+
+# Init command defaults
+DEFAULT_PROJECT_NAME = "my-mock-api"
+DEFAULT_MODELS_FILENAME = "models.py"
+DEFAULT_CONFIG_FILENAME = "mock-api.yml"
+DEFAULT_README_FILENAME = "README.md"
+DEFAULT_GITIGNORE_FILENAME = ".gitignore"
+
+# Project name validation (alphanumeric, hyphens, underscores)
+PROJECT_NAME_PATTERN = r"^[a-zA-Z0-9_-]+$"
