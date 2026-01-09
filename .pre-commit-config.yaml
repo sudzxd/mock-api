@@ -21,6 +21,13 @@ repos:
       - id: check-merge-conflict
       - id: mixed-line-ending
 
+  # YAML linting
+  - repo: https://github.com/adrienverge/yamllint
+    rev: v1.35.1
+    hooks:
+      - id: yamllint
+        args: [--strict]
+
   # Pyproject formatting
   - repo: https://github.com/tox-dev/pyproject-fmt
     rev: "v2.5.0"

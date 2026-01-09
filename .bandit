@@ -1,0 +1,8 @@
+exclude_dirs:
+  - /tests
+  - /.venv
+
+skips:
+  - B101
+  - B104
+  - B311
