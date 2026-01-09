@@ -125,29 +125,33 @@ jobs:
 
       - name: Start mock API server
         run: |
-          PYTHONPATH=. uv run python -m mock_api.cli.main serve --models test_models.py --port 3000 --generate-data 10 &
+          PYTHONPATH=. uv run python -m mock_api.cli.main serve \
+            --models test_models.py \
+            --port 3000 \
+            --generate-data \
+            --data-count 10 &
           echo $! > server.pid
           sleep 5
 
       - name: Test API endpoints
         run: |
           # Test list users
-          curl -f http://localhost:3000/users || exit 1
+          curl -f http://localhost:3000/api/v1/users || exit 1
 
           # Test get single user
-          curl -f http://localhost:3000/users/1 || exit 1
+          curl -f http://localhost:3000/api/v1/users/1 || exit 1
 
           # Test create user
-          curl -f -X POST http://localhost:3000/users \
+          curl -f -X POST http://localhost:3000/api/v1/users \
             -H "Content-Type: application/json" \
             -d '{"id": 999, "name": "Test User", "email": "test@example.com", \
             "created_at": "2025-01-01T00:00:00Z"}' || exit 1
 
           # Test list posts
-          curl -f http://localhost:3000/posts || exit 1
+          curl -f http://localhost:3000/api/v1/posts || exit 1
 
           # Test filtering
-          curl -f "http://localhost:3000/posts?author_id=1" || exit 1
+          curl -f "http://localhost:3000/api/v1/posts?author_id=1" || exit 1
 
       - name: Stop server
         if: always()
