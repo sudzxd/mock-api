@@ -4,7 +4,7 @@ requires = [ "hatchling" ]
 
 [project]
 name = "mockapi-server"
-version = "0.1.0a1"
+version = "0.1.0a2"
 description = "Generate full-featured REST APIs from Pydantic models or TypeScript types"
 readme = "README.md"
 keywords = [ "api", "fake-data", "fastapi", "mock", "pydantic", "rest", "testing" ]
