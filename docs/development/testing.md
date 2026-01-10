@@ -117,19 +117,30 @@ open htmlcov/index.html
 
 ## Benchmarks
 
+We use pytest-benchmark to track performance across 53 tests covering parser, generator, store, router, and server components.
+
 ```bash
-make benchmark           # Run benchmarks
-make benchmark-compare   # Compare with baseline
-make benchmark-save      # Save new baseline
+make benchmark           # Run all benchmarks (~45s)
+make benchmark-compare   # Compare with baseline (fails if >20% slower)
+make benchmark-save      # Save new baseline after optimizations
+make benchmark-report    # Generate histogram in .benchmarks/
 ```
+
+**Performance Targets:**
+- Parser: <10ms per model
+- Generator: <20ms for 100 records
+- Store CRUD: <10μs per operation
+- API requests: <2ms
+
+**CI Integration:** Benchmarks run on `develop` and `main` branches, posting results as commit comments and failing PRs with >20% performance regression.
 
 ### Writing Benchmarks
 
 ```python
 def test_parser_performance(benchmark):
-    """Parser should parse 10 models in < 10ms."""
+    """Benchmark: parser-simple."""
     parser = SchemaParser()
-    result = benchmark(parser.parse_file, "tests/fixtures/benchmark_models.py")
+    result = benchmark(parser.parse_file, "tests/fixtures/models.py")
     assert len(result) == 10
 ```
 
