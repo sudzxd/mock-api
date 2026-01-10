@@ -55,7 +55,7 @@ def clean_env(monkeypatch: MonkeyPatch) -> None:
 @pytest.fixture
 def temp_config_yaml(tmp_path: Path) -> Path:
     """Create temporary YAML config file."""
-    config_file = tmp_path / "mock-api.yml"
+    config_file = tmp_path / "mockapi-server.yml"
     config_file.write_text("""
 seed_count: 20
 port: 8000
@@ -70,7 +70,7 @@ cors_origins:
 @pytest.fixture
 def temp_config_json(tmp_path: Path) -> Path:
     """Create temporary JSON config file."""
-    config_file = tmp_path / "mock-api.json"
+    config_file = tmp_path / "mockapi-server.json"
     config_data = {
         "seed_count": 30,
         "port": 9000,
@@ -380,7 +380,7 @@ def test_find_config_file_current_dir(tmp_path: Path, monkeypatch: MonkeyPatch) 
     monkeypatch.chdir(tmp_path)
 
     # Test YAML
-    config_file = tmp_path / "mock-api.yml"
+    config_file = tmp_path / "mockapi-server.yml"
     config_file.write_text("seed_count: 10")
 
     found = find_config_file()
@@ -390,7 +390,7 @@ def test_find_config_file_current_dir(tmp_path: Path, monkeypatch: MonkeyPatch) 
 def test_find_config_file_parent_dir(tmp_path: Path, monkeypatch: MonkeyPatch) -> None:
     """Test finding config file in parent directory."""
     # Create config in parent
-    config_file = tmp_path / "mock-api.yml"
+    config_file = tmp_path / "mockapi-server.yml"
     config_file.write_text("seed_count: 10")
 
     # Change to subdirectory
@@ -407,9 +407,9 @@ def test_find_config_file_priority(tmp_path: Path, monkeypatch: MonkeyPatch) -> 
     monkeypatch.chdir(tmp_path)
 
     # Create all formats
-    yml_file = tmp_path / "mock-api.yml"
-    yaml_file = tmp_path / "mock-api.yaml"
-    json_file = tmp_path / "mock-api.json"
+    yml_file = tmp_path / "mockapi-server.yml"
+    yaml_file = tmp_path / "mockapi-server.yaml"
+    json_file = tmp_path / "mockapi-server.json"
 
     yml_file.write_text("seed_count: 1")
     yaml_file.write_text("seed_count: 2")
@@ -480,7 +480,7 @@ def test_get_config_auto_discover(tmp_path: Path, monkeypatch: MonkeyPatch) -> N
     monkeypatch.chdir(tmp_path)
 
     # Create config file
-    config_file = tmp_path / "mock-api.yml"
+    config_file = tmp_path / "mockapi-server.yml"
     config_file.write_text("seed_count: 15")
 
     config = get_config()

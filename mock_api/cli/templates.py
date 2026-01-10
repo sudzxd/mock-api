@@ -28,7 +28,7 @@ class ProjectTemplate:
         name: Template name (basic, blog, ecommerce, custom).
         description: Short description of the template.
         models_content: Python code for models.py file.
-        config_content: YAML content for mock-api.yml file.
+        config_content: YAML content for mockapi-server.yml file.
         readme_content: Markdown content for README.md file.
     """
 
@@ -70,7 +70,7 @@ cors_origins:
 
 _BASIC_README = """# {project_name}
 
-A simple mock API generated with [mock-api](https://github.com/sudarshan-sagar/mock-api).
+A simple mock API generated with [mockapi-server](https://github.com/sudarshan-sagar/mockapi-server).
 
 ## Models
 
@@ -78,14 +78,14 @@ A simple mock API generated with [mock-api](https://github.com/sudarshan-sagar/m
 
 ## Quick Start
 
-1. Install mock-api:
+1. Install mockapi-server:
    ```bash
-   pip install mock-api
+   pip install mockapi-server
    ```
 
 2. Start the server:
    ```bash
-   mock-api serve --models models.py --generate-data
+   mockapi-server serve --models models.py --generate-data
    ```
 
 3. Visit http://localhost:{port}/docs to explore the API
@@ -106,7 +106,7 @@ curl http://localhost:{port}/api/v1/users
 
 ## Configuration
 
-Edit `mock-api.yml` to customize:
+Edit `mockapi-server.yml` to customize:
 - `seed_count`: Number of instances to generate (default: {seed_count})
 - `port`: Server port (default: {port})
 - `log_level`: Logging level (DEBUG, INFO, WARNING, ERROR)
@@ -175,7 +175,7 @@ cors_origins:
 
 _BLOG_README = """# {project_name}
 
-A blog API with users, posts, and comments. Generated with [mock-api](https://github.com/sudarshan-sagar/mock-api).
+A blog API with users, posts, and comments. Generated with [mockapi-server](https://github.com/sudarshan-sagar/mockapi-server).
 
 ## Models
 
@@ -190,14 +190,14 @@ A blog API with users, posts, and comments. Generated with [mock-api](https://gi
 
 ## Quick Start
 
-1. Install mock-api:
+1. Install mockapi-server:
    ```bash
-   pip install mock-api
+   pip install mockapi-server
    ```
 
 2. Start the server:
    ```bash
-   mock-api serve --models models.py --generate-data
+   mockapi-server serve --models models.py --generate-data
    ```
 
 3. Visit http://localhost:{port}/docs to explore the API
@@ -237,7 +237,7 @@ curl "http://localhost:{port}/api/v1/comments?post_id=1"
 
 ## Configuration
 
-Edit `mock-api.yml` to customize server settings.
+Edit `mockapi-server.yml` to customize server settings.
 """
 
 BLOG_TEMPLATE = ProjectTemplate(
@@ -324,7 +324,7 @@ cors_origins:
 
 _ECOMMERCE_README = """# {project_name}
 
-An e-commerce API with products, categories, customers, and orders. Generated with [mock-api](https://github.com/sudarshan-sagar/mock-api).
+An e-commerce API with products, categories, customers, and orders. Generated with [mockapi-server](https://github.com/sudarshan-sagar/mockapi-server).
 
 ## Models
 
@@ -341,14 +341,14 @@ An e-commerce API with products, categories, customers, and orders. Generated wi
 
 ## Quick Start
 
-1. Install mock-api:
+1. Install mockapi-server:
    ```bash
-   pip install mock-api
+   pip install mockapi-server
    ```
 
 2. Start the server:
    ```bash
-   mock-api serve --models models.py --generate-data
+   mockapi-server serve --models models.py --generate-data
    ```
 
 3. Visit http://localhost:{port}/docs to explore the API
@@ -394,7 +394,7 @@ curl "http://localhost:{port}/api/v1/orders?status=pending"
 
 ## Configuration
 
-Edit `mock-api.yml` to customize server settings.
+Edit `mockapi-server.yml` to customize server settings.
 """
 
 ECOMMERCE_TEMPLATE = ProjectTemplate(
@@ -457,20 +457,20 @@ cors_origins:
 
 _CUSTOM_README = """# {project_name}
 
-A custom mock API generated with [mock-api](https://github.com/sudarshan-sagar/mock-api).
+A custom mock API generated with [mockapi-server](https://github.com/sudarshan-sagar/mockapi-server).
 
 ## Quick Start
 
-1. Install mock-api:
+1. Install mockapi-server:
    ```bash
-   pip install mock-api
+   pip install mockapi-server
    ```
 
 2. Define your models in `models.py`
 
 3. Start the server:
    ```bash
-   mock-api serve --models models.py --generate-data
+   mockapi-server serve --models models.py --generate-data
    ```
 
 4. Visit http://localhost:{port}/docs to explore the API
@@ -508,7 +508,7 @@ class Post(BaseModel):
 
 ## Configuration
 
-Edit `mock-api.yml` to customize:
+Edit `mockapi-server.yml` to customize:
 - `seed_count`: Number of instances to generate per model
 - `port`: Server port
 - `log_level`: Logging verbosity
@@ -518,13 +518,13 @@ Edit `mock-api.yml` to customize:
 
 ```bash
 # Validate your models
-mock-api validate --models models.py
+mockapi-server validate --models models.py
 
 # Generate sample data
-mock-api generate --models models.py --count 50 --output data.json
+mockapi-server generate --models models.py --count 50 --output data.json
 
 # Start server with auto-generated data
-mock-api serve --models models.py --generate-data --data-count 20
+mockapi-server serve --models models.py --generate-data --data-count 20
 ```
 
 ## Example Requests
@@ -547,7 +547,7 @@ curl "http://localhost:{port}/api/v1/examples?name=Test"
 
 ## Learn More
 
-- [mock-api Documentation](https://github.com/sudarshan-sagar/mock-api)
+- [mockapi-server Documentation](https://github.com/sudarshan-sagar/mockapi-server)
 - [Pydantic Documentation](https://docs.pydantic.dev/)
 """
 
@@ -604,7 +604,7 @@ htmlcov/
 
 # Mock API
 *.log
-.mock-api/
+.mockapi-server/
 """
 
 # =============================================================================

@@ -20,5 +20,5 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Comprehensive test suite (167 tests, 90%+ coverage)
 - Development tooling: Makefile, ruff, pyright, pytest
 
-[Unreleased]: https://github.com/sudzxd/mock-api/compare/v0.1.0...HEAD
-[0.1.0]: https://github.com/sudzxd/mock-api/releases/tag/v0.1.0
+[Unreleased]: https://github.com/sudzxd/mockapi-server/compare/v0.1.0...HEAD
+[0.1.0]: https://github.com/sudzxd/mockapi-server/releases/tag/v0.1.0

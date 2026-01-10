@@ -1,4 +1,4 @@
-"""CLI for mock-api using Click.
+"""CLI for mockapi-server using Click.
 
 This module provides the command-line interface for creating and managing
 mock APIs from Pydantic models.
@@ -10,10 +10,10 @@ Commands:
 - validate: Validate Pydantic models file
 
 Example:
-    $ mock-api init --template blog
-    $ mock-api serve --models models.py --generate-data
-    $ mock-api generate --models models.py --count 100
-    $ mock-api validate --models models.py
+    $ mockapi-server init --template blog
+    $ mockapi-server serve --models models.py --generate-data
+    $ mockapi-server generate --models models.py --count 100
+    $ mockapi-server validate --models models.py
 """
 
 # pyright: reportUnusedFunction=false
@@ -104,7 +104,7 @@ def _check_existing_files(files_to_check: dict[str, Path], force: bool) -> None:
 
 
 @click.group()
-@click.version_option(version="1.0.0", prog_name="mock-api")
+@click.version_option(version="1.0.0", prog_name="mockapi-server")
 def cli() -> None:
     """Mock API - Generate REST APIs from Pydantic models.
 
@@ -112,7 +112,7 @@ def cli() -> None:
     validation, and realistic test data from your Pydantic models.
 
     Example:
-        $ mock-api serve --models models.py --generate-data
+        $ mockapi-server serve --models models.py --generate-data
     """
     pass
 
@@ -201,8 +201,8 @@ def serve(
         config: Path to configuration file (YAML or JSON).
 
     Example:
-        $ mock-api serve --models models.py --generate-data --data-count 50
-        $ mock-api serve -m models.py --port 3000 --reload
+        $ mockapi-server serve --models models.py --generate-data --data-count 50
+        $ mockapi-server serve -m models.py --port 3000 --reload
     """
     try:
         # Load configuration
@@ -330,8 +330,8 @@ def generate(
         config: Path to configuration file (YAML or JSON).
 
     Example:
-        $ mock-api generate --models models.py --count 100 --output ./data
-        $ mock-api generate -m models.py -c 50 -o ./fixtures
+        $ mockapi-server generate --models models.py --count 100 --output ./data
+        $ mockapi-server generate -m models.py -c 50 -o ./fixtures
     """
     try:
         # Load configuration
@@ -416,8 +416,8 @@ def validate(models: Path, verbose: bool) -> None:
         verbose: Show detailed model information.
 
     Example:
-        $ mock-api validate --models models.py
-        $ mock-api validate -m models.py --verbose
+        $ mockapi-server validate --models models.py
+        $ mockapi-server validate -m models.py --verbose
     """
     try:
         click.echo("🔍 Validating models file...")
@@ -532,10 +532,10 @@ def init(
 
     Example:
         # Interactive mode
-        $ mock-api init
+        $ mockapi-server init
 
         # Non-interactive mode
-        $ mock-api init --template blog --project-name my-blog --seed-count 50
+        $ mockapi-server init --template blog --project-name my-blog --seed-count 50
     """
     try:
         click.echo("🚀 Mock API Project Initialization")
@@ -648,7 +648,7 @@ def init(
         files_to_create["models"].write_text(template_obj.models_content)
         click.echo(f"✅ Created: {models_file}")
 
-        # Create mock-api.yml
+        # Create mockapi-server.yml
         config_content = template_obj.config_content.format(
             seed_count=seed_count, port=port
         )
@@ -673,7 +673,7 @@ def init(
         click.echo("Next steps:")
         click.echo(f"  1. Review your models in {models_file}")
         click.echo(
-            f"  2. Start the server: mock-api serve --models {models_file} "
+            f"  2. Start the server: mockapi-server serve --models {models_file} "
             "--generate-data"
         )
         click.echo(f"  3. Visit http://localhost:{port}/docs")

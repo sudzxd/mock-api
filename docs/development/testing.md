@@ -1,6 +1,6 @@
 # Testing Guide
 
-Testing practices and guidelines for mock-api.
+Testing practices and guidelines for mockapi-server.
 
 ## Quick Start
 

@@ -1,12 +1,12 @@
 # CLI Reference
 
-Complete reference for all mock-api commands.
+Complete reference for all mockapi-server commands.
 
 ## Global Options
 
 ```bash
-mock-api --version  # Show version
-mock-api --help     # Show help
+mockapi-server --version  # Show version
+mockapi-server --help     # Show help
 ```
 
 ## Commands
@@ -18,14 +18,14 @@ Initialize a new mock API project with scaffolding.
 #### Usage
 
 ```bash
-mock-api init [OPTIONS]
+mockapi-server init [OPTIONS]
 ```
 
 #### Options
 
 | Option           | Type   | Default       | Description                              |
 | ---------------- | ------ | ------------- | ---------------------------------------- |
-| `--project-name` | TEXT   | `my-mock-api` | Project name                             |
+| `--project-name` | TEXT   | `my-mockapi-server` | Project name                             |
 | `--template`     | CHOICE | -             | Template: basic, blog, ecommerce, custom |
 | `--models-file`  | TEXT   | `models.py`   | Models file path                         |
 | `--seed-count`   | INT    | `10`          | Initial seed data count (1-10000)        |
@@ -36,26 +36,26 @@ mock-api init [OPTIONS]
 
 ```bash
 # Interactive mode (prompts for all options)
-mock-api init
+mockapi-server init
 
 # Non-interactive with all options
-mock-api init \
+mockapi-server init \
   --template blog \
   --project-name my-blog \
   --seed-count 50 \
   --port 8000
 
 # Use custom models file location
-mock-api init --models-file src/models.py
+mockapi-server init --models-file src/models.py
 
 # Force overwrite existing files
-mock-api init --template basic --force
+mockapi-server init --template basic --force
 ```
 
 #### Created Files
 
 - `models.py` - Pydantic model definitions
-- `mock-api.yml` - Configuration file
+- `mockapi-server.yml` - Configuration file
 - `README.md` - Project documentation
 - `.gitignore` - Git ignore rules
 
@@ -68,7 +68,7 @@ Start the development server.
 #### Usage
 
 ```bash
-mock-api serve --models MODELS_FILE [OPTIONS]
+mockapi-server serve --models MODELS_FILE [OPTIONS]
 ```
 
 #### Options
@@ -90,22 +90,22 @@ mock-api serve --models MODELS_FILE [OPTIONS]
 
 ```bash
 # Basic server start
-mock-api serve --models models.py
+mockapi-server serve --models models.py
 
 # With data generation
-mock-api serve --models models.py --generate-data --data-count 50
+mockapi-server serve --models models.py --generate-data --data-count 50
 
 # Custom host and port
-mock-api serve -m models.py --host localhost --port 8000
+mockapi-server serve -m models.py --host localhost --port 8000
 
 # With auto-reload for development
-mock-api serve -m models.py --reload
+mockapi-server serve -m models.py --reload
 
 # Custom API prefix
-mock-api serve -m models.py --prefix /v2/api
+mockapi-server serve -m models.py --prefix /v2/api
 
 # Using config file
-mock-api serve --models models.py --config custom-config.yml
+mockapi-server serve --models models.py --config custom-config.yml
 ```
 
 #### Server URLs
@@ -125,7 +125,7 @@ Generate mock data files without starting a server.
 #### Usage
 
 ```bash
-mock-api generate --models MODELS_FILE [OPTIONS]
+mockapi-server generate --models MODELS_FILE [OPTIONS]
 ```
 
 #### Options
@@ -142,16 +142,16 @@ mock-api generate --models MODELS_FILE [OPTIONS]
 
 ```bash
 # Generate data to default directory
-mock-api generate --models models.py
+mockapi-server generate --models models.py
 
 # Generate 100 instances per model
-mock-api generate -m models.py --count 100
+mockapi-server generate -m models.py --count 100
 
 # Custom output directory
-mock-api generate -m models.py --output ./fixtures
+mockapi-server generate -m models.py --output ./fixtures
 
 # Using config file
-mock-api generate --models models.py --config my-config.yml
+mockapi-server generate --models models.py --config my-config.yml
 ```
 
 #### Output
@@ -193,7 +193,7 @@ Validate Pydantic models file.
 #### Usage
 
 ```bash
-mock-api validate --models MODELS_FILE [OPTIONS]
+mockapi-server validate --models MODELS_FILE [OPTIONS]
 ```
 
 #### Options
@@ -207,10 +207,10 @@ mock-api validate --models MODELS_FILE [OPTIONS]
 
 ```bash
 # Basic validation
-mock-api validate --models models.py
+mockapi-server validate --models models.py
 
 # Verbose output with field details
-mock-api validate -m models.py --verbose
+mockapi-server validate -m models.py --verbose
 ```
 
 #### Output
@@ -271,7 +271,7 @@ Verbose:
 
 ## Configuration File
 
-Create `mock-api.yml` to avoid repeating options:
+Create `mockapi-server.yml` to avoid repeating options:
 
 ```yaml
 # Server settings
@@ -296,10 +296,10 @@ CLI options override config file values:
 
 ```bash
 # Port from config: 3000
-mock-api serve --models models.py --config mock-api.yml
+mockapi-server serve --models models.py --config mockapi-server.yml
 
 # Port from CLI: 8000 (overrides config)
-mock-api serve --models models.py --config mock-api.yml --port 8000
+mockapi-server serve --models models.py --config mockapi-server.yml --port 8000
 ```
 
 ---
@@ -315,7 +315,7 @@ mock-api serve --models models.py --config mock-api.yml --port 8000
 
 ## Environment Variables
 
-Currently, mock-api does not use environment variables. All configuration is done via CLI options or config files.
+Currently, mockapi-server does not use environment variables. All configuration is done via CLI options or config files.
 
 ---
 

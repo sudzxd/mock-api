@@ -161,7 +161,7 @@ DEFAULT_AUTO_RELOAD = False
 DEFAULT_STRICT_MODE = False
 
 # Configuration file names (search order)
-CONFIG_FILE_NAMES = ["mock-api.yml", "mock-api.yaml", "mock-api.json"]
+CONFIG_FILE_NAMES = ["mockapi-server.yml", "mockapi-server.yaml", "mockapi-server.json"]
 
 # Environment variable prefix
 ENV_VAR_PREFIX = "MOCK_API_"
@@ -312,9 +312,9 @@ class TemplateType(StrEnum):
 
 
 # Init command defaults
-DEFAULT_PROJECT_NAME = "my-mock-api"
+DEFAULT_PROJECT_NAME = "my-mockapi-server"
 DEFAULT_MODELS_FILENAME = "models.py"
-DEFAULT_CONFIG_FILENAME = "mock-api.yml"
+DEFAULT_CONFIG_FILENAME = "mockapi-server.yml"
 DEFAULT_README_FILENAME = "README.md"
 DEFAULT_GITIGNORE_FILENAME = ".gitignore"
 

@@ -67,10 +67,10 @@ git commit --no-verify
 
 ```bash
 # Relative path
-mock-api serve --models ./path/to/models.py
+mockapi-server serve --models ./path/to/models.py
 
 # Absolute path
-mock-api serve --models /full/path/to/models.py
+mockapi-server serve --models /full/path/to/models.py
 
 # Verify file exists
 ls -la models.py
@@ -90,7 +90,7 @@ pip install pydantic
 
 ```bash
 # Use different port
-mock-api serve --models models.py --port 8000
+mockapi-server serve --models models.py --port 8000
 
 # Find and kill process
 lsof -i :3000
@@ -119,7 +119,7 @@ All required fields must be present in request. Check `/docs` for exact schema.
 **Solution:** Enable CORS in config:
 
 ```yaml
-# mock-api.yml
+# mockapi-server.yml
 cors_enabled: true
 cors_origins:
   - "*" # Allow all (dev only)
@@ -127,7 +127,7 @@ cors_origins:
 ```
 
 ```bash
-mock-api serve --models models.py --config mock-api.yml
+mockapi-server serve --models models.py --config mockapi-server.yml
 ```
 
 ### Foreign Key Issues
@@ -137,7 +137,7 @@ mock-api serve --models models.py --config mock-api.yml
 **Solution:** Use `--generate-data` flag for automatic relationship handling:
 
 ```bash
-mock-api serve --models models.py --generate-data
+mockapi-server serve --models models.py --generate-data
 ```
 
 Or create parent records first when manually creating data:
@@ -203,7 +203,7 @@ git push origin v0.1.0
 Still stuck? Try:
 
 1. Check [FAQ](faq.md) for common questions
-2. Search [existing issues](https://github.com/sudzxd/mock-api/issues)
+2. Search [existing issues](https://github.com/sudzxd/mockapi-server/issues)
 3. Open a new issue with:
    - Error message
    - Steps to reproduce

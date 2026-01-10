@@ -318,7 +318,7 @@ def test_init_basic_template(runner: CliRunner) -> None:
 
         # Check all files were created
         assert Path("models.py").exists()
-        assert Path("mock-api.yml").exists()
+        assert Path("mockapi-server.yml").exists()
         assert Path("README.md").exists()
         assert Path(".gitignore").exists()
 
@@ -329,7 +329,7 @@ def test_init_basic_template(runner: CliRunner) -> None:
         assert "email: str" in models
 
         # Verify config content
-        config = Path("mock-api.yml").read_text()
+        config = Path("mockapi-server.yml").read_text()
         assert "seed_count: 10" in config
         assert "port: 3000" in config
 
@@ -446,7 +446,7 @@ def test_init_interactive_mode(runner: CliRunner) -> None:
 
         # Verify files were created
         assert Path("models.py").exists()
-        assert Path("mock-api.yml").exists()
+        assert Path("mockapi-server.yml").exists()
 
 
 def test_init_file_exists_error(runner: CliRunner) -> None:

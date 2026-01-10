@@ -75,7 +75,7 @@ jobs:
           python -m venv test-env
           source test-env/bin/activate || test-env\\Scripts\\activate
           pip install dist/*.whl
-          mock-api --version
+          mockapi-server --version
           deactivate
 
       - name: Store build artifacts
