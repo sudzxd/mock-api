@@ -62,7 +62,7 @@ htmlcov/
 # Project specific
 *.db
 *.sqlite
-mock-api.log
+mockapi-server.log
 
 # Planning docs (keep local, don't commit)
 docs/GOLD_STANDARD_CHECKLIST.md
