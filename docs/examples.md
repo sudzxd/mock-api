@@ -1,6 +1,6 @@
 # Examples
 
-Real-world patterns demonstrating mock-api capabilities.
+Real-world patterns demonstrating mockapi-server capabilities.
 
 ## Basic User API
 
@@ -19,7 +19,7 @@ class User(BaseModel):
 ```
 
 ```bash
-mock-api serve --models models.py --generate-data --data-count 20
+mockapi-server serve --models models.py --generate-data --data-count 20
 ```
 
 Test endpoints:
@@ -64,7 +64,7 @@ class Comment(BaseModel):
 ```
 
 ```bash
-mock-api serve --models models.py --generate-data --data-count 50
+mockapi-server serve --models models.py --generate-data --data-count 50
 ```
 
 Query relationships:
@@ -156,10 +156,10 @@ function UserList() {
 
 ## Configuration
 
-Use `mock-api.yml` for project settings:
+Use `mockapi-server.yml` for project settings:
 
 ```yaml
-# mock-api.yml
+# mockapi-server.yml
 seed_count: 100
 port: 3000
 log_level: INFO
@@ -170,5 +170,5 @@ cors_origins:
 ```
 
 ```bash
-mock-api serve --models models.py --config mock-api.yml --generate-data
+mockapi-server serve --models models.py --config mockapi-server.yml --generate-data
 ```

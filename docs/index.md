@@ -1,4 +1,4 @@
-# mock-api Documentation
+# mockapi-server Documentation
 
 Generate full-featured REST APIs from your Pydantic models in seconds.
 
@@ -28,19 +28,19 @@ Generate full-featured REST APIs from your Pydantic models in seconds.
 
 ### External Resources
 
-- [GitHub Repository](https://github.com/sudzxd/mock-api)
-- [Issue Tracker](https://github.com/sudzxd/mock-api/issues)
-- [PyPI Package](https://pypi.org/project/mock-api/)
+- [GitHub Repository](https://github.com/sudzxd/mockapi-server)
+- [Issue Tracker](https://github.com/sudzxd/mockapi-server/issues)
+- [PyPI Package](https://pypi.org/project/mockapi-server/)
 
 ## Quick Links
 
-**Install:** `pip install mock-api`
+**Install:** `pip install mockapi-server`
 
 **Quick Start:**
 
 ```bash
-mock-api init
-mock-api serve --models models.py --generate-data
+mockapi-server init
+mockapi-server serve --models models.py --generate-data
 ```
 
 **Interactive Docs:** `http://localhost:3000/docs`

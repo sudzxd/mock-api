@@ -1,1 +1,1 @@
-"""Utility modules for mock-api."""
+"""Utility modules for mockapi-server."""

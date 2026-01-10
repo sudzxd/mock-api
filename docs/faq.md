@@ -1,16 +1,16 @@
 # FAQ
 
-Frequently asked questions about mock-api.
+Frequently asked questions about mockapi-server.
 
 ## General
 
-### What is mock-api?
+### What is mockapi-server?
 
-mock-api generates fully functional REST APIs from Pydantic models. It creates realistic test data, handles CRUD operations, and automatically detects relationships - all without writing API code.
+mockapi-server generates fully functional REST APIs from Pydantic models. It creates realistic test data, handles CRUD operations, and automatically detects relationships - all without writing API code.
 
-### When should I use mock-api?
+### When should I use mockapi-server?
 
-Use mock-api when:
+Use mockapi-server when:
 - Frontend needs to develop before backend is ready
 - Testing requires realistic API responses
 - Prototyping requires quick API mockups
@@ -18,7 +18,7 @@ Use mock-api when:
 
 ### How is this different from json-server?
 
-| Feature | mock-api | json-server |
+| Feature | mockapi-server | json-server |
 |---------|----------|-------------|
 | **Input** | Pydantic models (types) | JSON files (data) |
 | **Data Generation** | Automatic with realistic data | Manual |
@@ -27,7 +27,7 @@ Use mock-api when:
 
 ### Is this production-ready?
 
-mock-api is designed for development and testing. For production, implement a real API using FastAPI, Django, or similar frameworks with the same Pydantic models.
+mockapi-server is designed for development and testing. For production, implement a real API using FastAPI, Django, or similar frameworks with the same Pydantic models.
 
 ## Technical
 
@@ -86,7 +86,7 @@ No, data is stored in memory only. When the server stops, all data is lost. Use 
 **Solution:** Ensure the path is correct:
 
 ```bash
-mock-api serve --models ./path/to/models.py
+mockapi-server serve --models ./path/to/models.py
 ```
 
 ### Port already in use
@@ -94,7 +94,7 @@ mock-api serve --models ./path/to/models.py
 **Solution:** Use a different port:
 
 ```bash
-mock-api serve --models models.py --port 8000
+mockapi-server serve --models models.py --port 8000
 ```
 
 Or kill the process:
@@ -109,7 +109,7 @@ kill -9 <PID>
 **Solution:** Enable CORS in config:
 
 ```yaml
-# mock-api.yml
+# mockapi-server.yml
 cors_enabled: true
 cors_origins:
   - "*"  # Dev only

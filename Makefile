@@ -1,4 +1,4 @@
-# Makefile for mock-api development
+# Makefile for mockapi-server development
 # Follows project style guide conventions
 # Uses: uv, ruff, pyright, pytest
 
@@ -17,7 +17,7 @@ NC := \033[0m # No Color
 ##@ General
 
 help: ## Display this help message
-	@echo "$(BLUE)mock-api development commands$(NC)"
+	@echo "$(BLUE)mockapi-server development commands$(NC)"
 	@echo ""
 	@awk 'BEGIN {FS = ":.*##"; printf "Usage:\n  make $(GREEN)<target>$(NC)\n"} \
 		/^[a-zA-Z_0-9-]+:.*?##/ { printf "  $(GREEN)%-20s$(NC) %s\n", $$1, $$2 } \
@@ -35,7 +35,7 @@ dev: ## Install all dependencies (including dev) and CLI tool
 	@echo "$(BLUE)Installing CLI tool (editable)...$(NC)"
 	uv tool install --editable . --force
 	@echo "$(GREEN)✓ Dependencies installed$(NC)"
-	@echo "$(GREEN)✓ mock-api command available$(NC)"
+	@echo "$(GREEN)✓ mockapi-server command available$(NC)"
 
 ##@ Development
 
@@ -147,7 +147,7 @@ publish-test: build check-package ## Publish to TestPyPI
 	@echo "$(YELLOW)Publishing to TestPyPI...$(NC)"
 	uv run twine upload --repository testpypi dist/*
 	@echo "$(GREEN)✓ Published to TestPyPI$(NC)"
-	@echo "Test install: pip install --index-url https://test.pypi.org/simple/ mock-api"
+	@echo "Test install: pip install --index-url https://test.pypi.org/simple/ mockapi-server"
 
 publish: build check-package ## Publish to PyPI (PRODUCTION)
 	@echo "$(RED)WARNING: Publishing to production PyPI!$(NC)"
@@ -185,7 +185,7 @@ hooks-run: ## Run pre-commit hooks on all files
 info: ## Show project information
 	@echo "$(BLUE)Project Information$(NC)"
 	@echo "-------------------"
-	@echo "Project: mock-api"
+	@echo "Project: mockapi-server"
 	@echo "Python: $$(python --version)"
 	@echo "uv: $$(uv --version)"
 	@echo "Path: $$(pwd)"
@@ -196,7 +196,7 @@ info: ## Show project information
 version: ## Show version information
 	@echo "$(BLUE)Version Information$(NC)"
 	@echo "-------------------"
-	@uv run python -c "import mock_api; print(f'mock-api: {mock_api.__version__ if hasattr(mock_api, \"__version__\") else \"dev\"}')" 2>/dev/null || echo "mock-api: dev"
+	@uv run python -c "import mock_api; print(f'mockapi-server: {mock_api.__version__ if hasattr(mock_api, \"__version__\") else \"dev\"}')" 2>/dev/null || echo "mockapi-server: dev"
 	@echo "Python: $$(python --version)"
 	@echo "uv: $$(uv --version)"
 	@echo "ruff: $$(uv run ruff --version)"

@@ -1,4 +1,4 @@
-# mock-api
+# mockapi-server
 
 **Stop writing JSON files. Start with types.**
 
@@ -8,13 +8,13 @@ Generate full-featured REST APIs from your Pydantic models in seconds.
 
 ```bash
 # Install
-pip install mock-api
+pip install mockapi-server
 
 # Initialize project
-mock-api init
+mockapi-server init
 
 # Run server
-mock-api serve --models models.py --generate-data
+mockapi-server serve --models models.py --generate-data
 ```
 
 ## Features
@@ -47,7 +47,7 @@ class Post(BaseModel):
 ```
 
 ```bash
-mock-api serve --models models.py --generate-data --data-count 50
+mockapi-server serve --models models.py --generate-data --data-count 50
 ```
 
 Access your API at `http://localhost:3000/api/v1` with auto-generated endpoints:
@@ -55,13 +55,13 @@ Access your API at `http://localhost:3000/api/v1` with auto-generated endpoints:
 - `POST /users`, `PUT /users/:id`, `DELETE /users/:id`
 - Interactive docs at `/docs`
 
-## Why mock-api?
+## Why mockapi-server?
 
 **json-server:** Manual JSON files that get stale
 **Mockoon:** GUI clicking for every endpoint
 **Prism:** Requires full OpenAPI spec
 
-**mock-api:** Your types ARE your API contract.
+**mockapi-server:** Your types ARE your API contract.
 
 ## Documentation
 

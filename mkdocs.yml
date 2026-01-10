@@ -1,8 +1,8 @@
-site_name: mock-api
+site_name: mockapi-server
 site_description: Generate production-ready REST APIs from Pydantic models in seconds
-site_url: https://sudzxd.github.io/mock-api/
-repo_url: https://github.com/sudzxd/mock-api
-repo_name: sudzxd/mock-api
+site_url: https://sudzxd.github.io/mockapi-server/
+repo_url: https://github.com/sudzxd/mockapi-server
+repo_name: sudzxd/mockapi-server
 edit_uri: edit/develop/docs/
 
 theme:
@@ -80,7 +80,7 @@ plugins:
 extra:
   social:
     - icon: fontawesome/brands/github
-      link: https://github.com/sudzxd/mock-api
+      link: https://github.com/sudzxd/mockapi-server
   version:
     provider: mike
 

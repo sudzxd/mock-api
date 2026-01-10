@@ -1,10 +1,10 @@
 # CLAUDE.md - AI Assistant Guide
 
-**For AI assistants working on the mock-api codebase**
+**For AI assistants working on the mockapi-server codebase**
 
 ## Project Overview
 
-**mock-api** generates full-featured REST APIs from Pydantic models in seconds.
+**mockapi-server** generates full-featured REST APIs from Pydantic models in seconds.
 
 **Core Functionality:**
 
@@ -34,7 +34,7 @@
 
 **Status:** Under active development
 
-**Repository:** <https://github.com/sudzxd/mock-api>
+**Repository:** <https://github.com/sudzxd/mockapi-server>
 
 ## Documentation Structure
 
@@ -68,7 +68,7 @@
 ## Project Structure
 
 ```
-mock-api/
+mockapi-server/
 ├── mock_api/              # Source code
 │   ├── cli/               # CLI commands (Click)
 │   │   ├── main.py        # Entry point, command groups
@@ -287,8 +287,8 @@ Client Request → FastAPI Router → Route Handler → DataStore (CRUD) → Res
 ### Setup Dev Environment
 
 ```bash
-git clone https://github.com/sudzxd/mock-api
-cd mock-api
+git clone https://github.com/sudzxd/mockapi-server
+cd mockapi-server
 make dev                # Install dependencies
 make hooks-install      # Install pre-commit hooks
 make check              # Verify setup
@@ -342,9 +342,9 @@ git push
 
 **Import errors:** `pip install -e ".[dev]"`
 
-**Port in use:** `mock-api serve --models models.py --port 8000`
+**Port in use:** `mockapi-server serve --models models.py --port 8000`
 
-**CORS errors:** Enable in `mock-api.yml`:
+**CORS errors:** Enable in `mockapi-server.yml`:
 
 ```yaml
 cors_enabled: true
@@ -410,9 +410,9 @@ cors_origins: ["*"]
 
 ## Quick Links
 
-- **GitHub:** <https://github.com/sudzxd/mock-api>
-- **Issues:** <https://github.com/sudzxd/mock-api/issues>
-- **PyPI:** <https://pypi.org/project/mock-api/>
+- **GitHub:** <https://github.com/sudzxd/mockapi-server>
+- **Issues:** <https://github.com/sudzxd/mockapi-server/issues>
+- **PyPI:** <https://pypi.org/project/mockapi-server/>
 - **Docs:** See `docs/` directory
 - **Examples:** See `examples/` directory
 
