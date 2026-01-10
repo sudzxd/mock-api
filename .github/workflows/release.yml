@@ -34,8 +34,30 @@ jobs:
           name: python-package-distributions
           path: dist/
 
+  publish-to-test-pypi:
+    name: Publish to Test PyPI (pre-release)
+    if: contains(github.ref_name, 'a') || contains(github.ref_name, 'b') || contains(github.ref_name, 'rc')
+    needs: [build]
+    runs-on: ubuntu-latest
+    environment:
+      name: test-pypi
+      url: https://test.pypi.org/p/mockapi-server
+
+    steps:
+      - name: Download all the dists
+        uses: actions/download-artifact@v4
+        with:
+          name: python-package-distributions
+          path: dist/
+
+      - name: Publish distribution to Test PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          repository-url: https://test.pypi.org/legacy/
+
   publish-to-pypi:
-    name: Publish to PyPI
+    name: Publish to PyPI (stable)
+    if: "!(contains(github.ref_name, 'a') || contains(github.ref_name, 'b') || contains(github.ref_name, 'rc'))"
     needs: [build]
     runs-on: ubuntu-latest
     environment:
@@ -54,7 +76,8 @@ jobs:
 
   github-release:
     name: Create GitHub Release
-    needs: [publish-to-pypi]
+    if: always()
+    needs: [publish-to-test-pypi, publish-to-pypi]
     runs-on: ubuntu-latest
 
     steps:
@@ -70,6 +93,15 @@ jobs:
           name: python-package-distributions
           path: dist/
 
+      - name: Determine if pre-release
+        id: prerelease
+        run: |
+          if [[ "${{ github.ref_name }}" =~ (a|b|rc) ]]; then
+            echo "prerelease=true" >> $GITHUB_OUTPUT
+          else
+            echo "prerelease=false" >> $GITHUB_OUTPUT
+          fi
+
       - name: Create GitHub Release
         env:
           GITHUB_TOKEN: ${{ github.token }}
@@ -79,4 +111,5 @@ jobs:
           --repo '${{ github.repository }}'
           --title 'Release ${{ github.ref_name }}'
           --generate-notes
+          ${{ steps.prerelease.outputs.prerelease == 'true' && '--prerelease' || '' }}
           dist/**
