@@ -146,8 +146,8 @@ make check-package  # Verify package
 
 ```bash
 make publish-test
-pip install --index-url https://test.pypi.org/simple/ mock-api
-mock-api --version
+pip install --index-url https://test.pypi.org/simple/ mockapi-server
+mockapi-server --version
 ```
 
 ### Production PyPI
@@ -252,11 +252,11 @@ Post on GitHub Releases:
 
 ## Installation
 
-pip install mock-api==0.1.0
+pip install mockapi-server==0.1.0
 
 ## Documentation
 
-https://github.com/sudzxd/mock-api
+https://github.com/sudzxd/mockapi-server
 ```
 
 ## References

@@ -1,4 +1,4 @@
-"""Configuration management for mock-api.
+"""Configuration management for mockapi-server.
 
 This module provides centralized configuration management with support for:
 - Default values
@@ -12,7 +12,7 @@ Usage:
     print(config.port)  # 3000
 
     # Load from file
-    config = get_config(config_file="mock-api.yml")
+    config = get_config(config_file="mockapi-server.yml")
 
     # Override with env vars
     # export MOCK_API_PORT=8000
@@ -64,10 +64,10 @@ from mock_api.utils.logger import configure_logging
 
 
 class Config(BaseModel):
-    """Configuration schema for mock-api.
+    """Configuration schema for mockapi-server.
 
     All settings can be overridden via:
-    1. Configuration file (mock-api.yml or mock-api.json)
+    1. Configuration file (mockapi-server.yml or mockapi-server.json)
     2. Environment variables (prefixed with MOCK_API_)
 
     Environment variable examples:
@@ -226,9 +226,9 @@ def find_config_file() -> Path | None:
     """Find configuration file in current directory or parent directories.
 
     Searches for (in order):
-    - mock-api.yml
-    - mock-api.yaml
-    - mock-api.json
+    - mockapi-server.yml
+    - mockapi-server.yaml
+    - mockapi-server.json
 
     Returns:
         Path to config file if found, None otherwise

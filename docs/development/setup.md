@@ -1,12 +1,12 @@
 # Development Setup
 
-Guide for setting up a mock-api development environment.
+Guide for setting up a mockapi-server development environment.
 
 ## Quick Start
 
 ```bash
-git clone https://github.com/sudzxd/mock-api
-cd mock-api
+git clone https://github.com/sudzxd/mockapi-server
+cd mockapi-server
 make dev
 make hooks-install
 make check
@@ -87,7 +87,7 @@ All commands should pass.
 ## Project Structure
 
 ```
-mock-api/
+mockapi-server/
 ├── mock_api/          # Source code
 │   ├── cli/           # CLI commands
 │   ├── core/          # Core logic
@@ -143,7 +143,7 @@ make dev
 ```bash
 make run  # Runs basic example
 # or
-mock-api serve --models examples/blog/models.py --generate-data --reload
+mockapi-server serve --models examples/blog/models.py --generate-data --reload
 ```
 
 ### Clean Build Artifacts

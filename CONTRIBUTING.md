@@ -5,8 +5,8 @@ Thanks for your interest in contributing!
 ## Quick Start
 
 ```bash
-git clone https://github.com/sudzxd/mock-api
-cd mock-api
+git clone https://github.com/sudzxd/mockapi-server
+cd mockapi-server
 make dev
 make hooks-install
 make check
@@ -48,7 +48,7 @@ See comprehensive guides:
 
 ## Getting Help
 
-- Check existing [issues](https://github.com/sudzxd/mock-api/issues)
+- Check existing [issues](https://github.com/sudzxd/mockapi-server/issues)
 - Read [documentation](docs/)
 - Open a new issue with details
 

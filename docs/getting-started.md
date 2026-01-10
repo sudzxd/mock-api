@@ -5,13 +5,13 @@ Create your first mock API project in 5 minutes.
 ## Installation
 
 ```bash
-pip install mock-api
+pip install mockapi-server
 ```
 
 Verify:
 
 ```bash
-mock-api --version
+mockapi-server --version
 ```
 
 ## Quick Start
@@ -19,10 +19,10 @@ mock-api --version
 ### Option 1: Initialize with Template
 
 ```bash
-mock-api init
+mockapi-server init
 
 # Or non-interactive
-mock-api init --template blog --project-name my-blog --seed-count 50
+mockapi-server init --template blog --project-name my-blog --seed-count 50
 ```
 
 Available templates: **basic**, **blog**, **ecommerce**, **custom**
@@ -46,7 +46,7 @@ class User(BaseModel):
 Start the server:
 
 ```bash
-mock-api serve --models models.py --generate-data --data-count 20
+mockapi-server serve --models models.py --generate-data --data-count 20
 ```
 
 ## Your First API Request
@@ -90,7 +90,7 @@ Generated data respects relationships - all `author_id` values reference valid U
 
 ## Configuration
 
-Create `mock-api.yml`:
+Create `mockapi-server.yml`:
 
 ```yaml
 seed_count: 50
@@ -105,7 +105,7 @@ cors_origins: ["*"]
 Use it:
 
 ```bash
-mock-api serve --models models.py --config mock-api.yml
+mockapi-server serve --models models.py --config mockapi-server.yml
 ```
 
 ## Next Steps

@@ -1,4 +1,4 @@
-"""Centralized logging configuration for mock-api.
+"""Centralized logging configuration for mockapi-server.
 
 This module provides a consistent logging interface across the application
 with colored output using Rich for better developer experience.

@@ -4,7 +4,7 @@ requires = [ "hatchling" ]
 
 [project]
 name = "mock-api"
-version = "0.1.0"
+version = "0.1.0a1"
 description = "Generate full-featured REST APIs from Pydantic models or TypeScript types"
 readme = "README.md"
 keywords = [ "api", "fake-data", "fastapi", "mock", "pydantic", "rest", "testing" ]

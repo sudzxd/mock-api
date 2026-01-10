@@ -1,10 +1,10 @@
 # Architecture
 
-System design and components of mock-api.
+System design and components of mockapi-server.
 
 ## Overview
 
-mock-api generates REST APIs from Pydantic models by parsing type definitions, generating realistic data, and creating FastAPI routes automatically.
+mockapi-server generates REST APIs from Pydantic models by parsing type definitions, generating realistic data, and creating FastAPI routes automatically.
 
 **Design Philosophy:**
 

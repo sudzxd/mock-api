@@ -1,6 +1,6 @@
 # Development Guidelines
 
-Development conventions and guidelines for mock-api contributors.
+Development conventions and guidelines for mockapi-server contributors.
 
 ## Git Workflow
 

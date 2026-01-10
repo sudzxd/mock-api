@@ -1,4 +1,4 @@
-"""Custom exceptions for mock-api.
+"""Custom exceptions for mockapi-server.
 
 This module provides a hierarchy of custom exceptions for better error handling
 and more helpful error messages throughout the application.
@@ -37,10 +37,10 @@ from __future__ import annotations
 
 
 class MockAPIException(Exception):
-    """Base exception for all mock-api errors.
+    """Base exception for all mockapi-server errors.
 
     All custom exceptions inherit from this base class, making it easy to
-    catch any mock-api specific error.
+    catch any mockapi-server specific error.
 
     Attributes:
         message: The error message.
@@ -80,8 +80,8 @@ class ConfigFileNotFoundError(ConfigurationError):
     """Raised when a configuration file cannot be found.
 
     Example:
-        >>> raise ConfigFileNotFoundError("mock-api.yml")
-        ConfigFileNotFoundError: Configuration file not found: mock-api.yml
+        >>> raise ConfigFileNotFoundError("mockapi-server.yml")
+        ConfigFileNotFoundError: Configuration file not found: mockapi-server.yml
     """
 
     def __init__(self, file_path: str) -> None:
@@ -103,9 +103,9 @@ class ConfigParseError(ConfigurationError):
     """Raised when a configuration file cannot be parsed.
 
     Example:
-        >>> raise ConfigParseError("mock-api.yml", "Invalid YAML syntax")
+        >>> raise ConfigParseError("mockapi-server.yml", "Invalid YAML syntax")
         ConfigParseError: Failed to parse configuration file
-        'mock-api.yml': Invalid YAML syntax
+        'mockapi-server.yml': Invalid YAML syntax
     """
 
     def __init__(self, file_path: str, reason: str) -> None:
@@ -309,8 +309,8 @@ class FileExistsError(InitializationError):
     """Raised when files already exist and --force flag is not used.
 
     Example:
-        >>> raise FileExistsError(["models.py", "mock-api.yml"])
-        FileExistsError: Files already exist: models.py, mock-api.yml
+        >>> raise FileExistsError(["models.py", "mockapi-server.yml"])
+        FileExistsError: Files already exist: models.py, mockapi-server.yml
     """
 
     def __init__(self, files: list[str]) -> None:
