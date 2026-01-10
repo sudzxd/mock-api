@@ -1,5 +1,14 @@
 # mockapi-server
 
+[![Test PyPI](https://img.shields.io/badge/Test%20PyPI-v0.1.0a2-blue)](https://test.pypi.org/project/mockapi-server/)
+[![Python versions](https://img.shields.io/badge/python-3.11%20|%203.12%20|%203.13-blue)](https://test.pypi.org/project/mockapi-server/)
+[![CI](https://github.com/sudzxd/mockapi-server/actions/workflows/ci-develop.yml/badge.svg)](https://github.com/sudzxd/mockapi-server/actions)
+[![Coverage](https://img.shields.io/badge/coverage-92%25-brightgreen)](https://github.com/sudzxd/mockapi-server)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Code style: ruff](https://img.shields.io/badge/code%20style-ruff-000000.svg)](https://github.com/astral-sh/ruff)
+[![Type checked: pyright](https://img.shields.io/badge/type%20checked-pyright-blue.svg)](https://github.com/microsoft/pyright)
+[![Documentation](https://img.shields.io/badge/docs-github.io-blue.svg)](https://sudzxd.github.io/mockapi-server)
+
 **Stop writing JSON files. Start with types.**
 
 Generate full-featured REST APIs from your Pydantic models in seconds.
@@ -64,6 +73,8 @@ Access your API at `http://localhost:3000/api/v1` with auto-generated endpoints:
 **mockapi-server:** Your types ARE your API contract.
 
 ## Documentation
+
+**[📚 Full Documentation](https://sudzxd.github.io/mockapi-server)**
 
 - [Getting Started](docs/getting-started.md) - Installation and first project
 - [CLI Reference](docs/cli-reference.md) - All commands and options
