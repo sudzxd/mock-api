@@ -2,7 +2,21 @@
 
 Real-world patterns demonstrating mockapi-server capabilities.
 
-## Basic User API
+## Complete Working Examples
+
+For ready-to-run example projects, see the [examples/](../examples/) directory:
+
+- **[Basic](../examples/basic/)** - Simple User and Product API with interactive HTML client
+- **[Blog](../examples/blog/)** - Multi-model relationships (User, Post, Comment) with Docker setup
+- **[E-commerce](../examples/ecommerce/)** - Complex e-commerce system with Postman collection
+
+Each example includes complete Pydantic models, setup instructions, and testing tools.
+
+## Code Patterns
+
+Below are code snippets demonstrating common usage patterns:
+
+### Basic User API
 
 Simple single-model API.
 
