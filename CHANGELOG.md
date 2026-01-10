@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.0a2] - 2026-01-10
+
+### Fixed
+
+- Renamed package from `mock-api` to `mockapi-server` to match repository name
+- Updated CLI command from `mock-api` to `mockapi-server`
+- Updated all GitHub URLs to point to `mockapi-server` repository
+
 ## [0.1.0a1] - 2026-01-10
 
 ### Added
@@ -35,6 +43,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Comprehensive test suite (167 tests, 90%+ coverage)
 - Development tooling: Makefile, ruff, pyright, pytest
 
-[Unreleased]: https://github.com/sudzxd/mockapi-server/compare/v0.1.0a1...HEAD
+[Unreleased]: https://github.com/sudzxd/mockapi-server/compare/v0.1.0a2...HEAD
+[0.1.0a2]: https://github.com/sudzxd/mockapi-server/releases/tag/v0.1.0a2
 [0.1.0a1]: https://github.com/sudzxd/mockapi-server/releases/tag/v0.1.0a1
 [0.1.0]: https://github.com/sudzxd/mockapi-server/releases/tag/v0.1.0
