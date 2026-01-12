@@ -93,6 +93,22 @@ curl "http://localhost:3000/api/v1/comments?post_id=5"
 
 Foreign keys automatically reference valid IDs.
 
+## Pagination
+
+**Page-based:**
+
+```bash
+curl "http://localhost:3000/api/v1/users?page=1&page_size=10"
+```
+
+**Offset-based:**
+
+```bash
+curl "http://localhost:3000/api/v1/users?offset=0&limit=10"
+```
+
+Both return `items` array with `pagination` metadata including `has_next` and `has_prev`.
+
 ## Frontend Integration
 
 Using mock API with React/Vue/etc.
