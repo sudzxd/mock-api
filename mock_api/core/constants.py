@@ -46,6 +46,13 @@ class LogLevel(StrEnum):
     CRITICAL = "CRITICAL"
 
 
+class PaginationStrategy(StrEnum):
+    """Pagination strategy options."""
+
+    PAGE = "page"
+    OFFSET = "offset"
+
+
 class ConfigFormat(StrEnum):
     """Supported configuration file formats."""
 
@@ -135,6 +142,7 @@ class ConfigField(StrEnum):
     CORS_ORIGINS = "cors_origins"
     AUTO_RELOAD = "auto_reload"
     STRICT_MODE = "strict_mode"
+    PAGINATION = "pagination"
 
 
 class BooleanValue(StrEnum):
@@ -238,6 +246,10 @@ TEXT_MAX_CHARS = 200
 DEFAULT_PAGE_SIZE = 20
 MAX_PAGE_SIZE = 100
 MIN_PAGE_SIZE = 1
+DEFAULT_OFFSET = 0
+DEFAULT_LIMIT = 20
+MAX_LIMIT = 100
+MIN_LIMIT = 1
 
 # Query defaults
 DEFAULT_PAGE_NUMBER = 1
@@ -263,6 +275,8 @@ class QueryParam(StrEnum):
 
     PAGE = "page"
     PAGE_SIZE = "page_size"
+    OFFSET = "offset"
+    LIMIT = "limit"
 
 
 class ResponseKey(StrEnum):

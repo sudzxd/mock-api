@@ -83,20 +83,57 @@ class ModelSchema:
 # =============================================================================
 
 
+@dataclass
+class PaginationParams:
+    """Internal pagination parameters after strategy detection.
+
+    Attributes:
+        strategy: Pagination strategy used ("page" or "offset").
+        start_idx: Starting index in the data list.
+        batch_size: Number of items to return (page_size or limit).
+        page_num: Page number (only relevant for page strategy, 0 for offset).
+    """
+
+    strategy: str
+    start_idx: int
+    batch_size: int
+    page_num: int
+
+
 class PaginationInfo(BaseModel):
     """Pagination metadata for query results.
 
+    Supports both page-based and offset-based pagination strategies.
+    Fields are optional to support both strategies flexibly.
+
     Attributes:
+        total_items: Total number of items across all pages.
+        has_next: Whether there is a next page/batch.
+        has_prev: Whether there is a previous page/batch.
+
+        # Page-based fields (None if using offset strategy)
         page: Current page number (1-indexed).
         page_size: Number of items per page.
-        total_items: Total number of items across all pages.
         total_pages: Total number of pages.
+
+        # Offset-based fields (None if using page strategy)
+        offset: Starting offset (0-indexed).
+        limit: Maximum items to return.
     """
 
-    page: int
-    page_size: int
+    # Common fields (always present)
     total_items: int
-    total_pages: int
+    has_next: bool
+    has_prev: bool
+
+    # Page-based fields (optional)
+    page: int | None = None
+    page_size: int | None = None
+    total_pages: int | None = None
+
+    # Offset-based fields (optional)
+    offset: int | None = None
+    limit: int | None = None
 
 
 class QueryResult(BaseModel):

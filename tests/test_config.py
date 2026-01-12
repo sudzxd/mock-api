@@ -222,6 +222,101 @@ def test_config_get_log_level_int():
 
 
 # =============================================================================
+# PAGINATION CONFIG TESTS
+# =============================================================================
+
+
+def test_pagination_config_defaults():
+    """Test default pagination configuration values."""
+    from mock_api.core.config import PaginationConfig
+
+    pagination = PaginationConfig()
+
+    assert pagination.strategy == "page"
+    assert pagination.default_page_size == 20
+    assert pagination.default_limit == 20
+    assert pagination.max_page_size == 100
+    assert pagination.max_limit == 100
+    assert pagination.min_page_size == 1
+    assert pagination.min_limit == 1
+
+
+def test_pagination_config_custom_values():
+    """Test pagination config with custom values."""
+    from mock_api.core.config import PaginationConfig
+
+    pagination = PaginationConfig(
+        strategy="offset",
+        default_limit=15,
+        max_limit=200,
+        min_limit=5,
+    )
+
+    assert pagination.strategy == "offset"
+    assert pagination.default_limit == 15
+    assert pagination.max_limit == 200
+    assert pagination.min_limit == 5
+
+
+def test_pagination_config_invalid_strategy():
+    """Test validation of invalid pagination strategy."""
+    from mock_api.core.config import PaginationConfig
+
+    with pytest.raises(ValidationError, match="Invalid pagination strategy"):
+        PaginationConfig(strategy="invalid")
+
+
+def test_pagination_config_in_main_config():
+    """Test pagination config as part of main Config."""
+    config = Config()
+
+    assert hasattr(config, "pagination")
+    assert config.pagination.strategy == "page"
+    assert config.pagination.default_page_size == 20
+
+
+def test_pagination_config_from_yaml(tmp_path: Path):
+    """Test loading pagination config from YAML file."""
+    config_file = tmp_path / "mockapi-server.yml"
+    config_file.write_text(
+        """
+pagination:
+  strategy: offset
+  default_limit: 15
+  max_limit: 200
+"""
+    )
+
+    config = get_config(config_file=config_file)
+
+    assert config.pagination.strategy == "offset"
+    assert config.pagination.default_limit == 15
+    assert config.pagination.max_limit == 200
+
+
+def test_pagination_config_from_json(tmp_path: Path):
+    """Test loading pagination config from JSON file."""
+    config_file = tmp_path / "mockapi-server.json"
+    config_file.write_text(
+        """
+{
+  "pagination": {
+    "strategy": "offset",
+    "default_limit": 25,
+    "max_page_size": 150
+  }
+}
+"""
+    )
+
+    config = get_config(config_file=config_file)
+
+    assert config.pagination.strategy == "offset"
+    assert config.pagination.default_limit == 25
+    assert config.pagination.max_page_size == 150
+
+
+# =============================================================================
 # FILE LOADING TESTS
 # =============================================================================
 

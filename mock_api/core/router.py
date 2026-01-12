@@ -30,12 +30,9 @@ from pydantic import BaseModel, ValidationError, create_model
 
 # Project/local
 from ..utils.logger import get_logger
+from .config import Config
 from .constants import (
     API_VERSION_PREFIX,
-    DEFAULT_PAGE_NUMBER,
-    DEFAULT_PAGE_SIZE,
-    MAX_PAGE_SIZE,
-    MIN_PAGE_SIZE,
     PRIMARY_KEY_FIELD,
     URL_ID_PATH_SEGMENT,
     URL_PATH_SEPARATOR,
@@ -122,6 +119,7 @@ class RouterGenerator:
         schemas: dict[str, ModelSchema],
         store: DataStore,
         prefix: str = API_VERSION_PREFIX,
+        config: Config | None = None,
     ) -> None:
         """Initialize the router generator.
 
@@ -129,6 +127,7 @@ class RouterGenerator:
             schemas: Dictionary of model schemas from parser.
             store: DataStore instance for data operations.
             prefix: API prefix for all routes (default: "/api/v1").
+            config: Configuration instance (auto-loads if not provided).
 
         Example:
             >>> router_gen = RouterGenerator(schemas, store, prefix="/api/v1")
@@ -136,6 +135,7 @@ class RouterGenerator:
         self.schemas = schemas
         self.store = store
         self.prefix = prefix
+        self._config = config or Config()
         self._router = FastAPIRouter(prefix=prefix)
         self._registry = ModelRegistry()
 
@@ -295,24 +295,50 @@ class RouterGenerator:
         self._add_delete_route(model_name, base_path, tag)
 
     def _add_list_route(self, model_name: str, base_path: str, tag: str) -> None:
-        """Add LIST route (GET /models)."""
+        """Add LIST route (GET /models) with dual pagination support."""
         response_model = self._registry.get_list_response_model(model_name)
+        pagination_config = self._config.pagination
 
         @self._router.get(
             base_path,
             response_model=response_model,
             tags=[tag],
             summary=f"List {model_name}s",
-            description=RouteDescription.LIST,
+            description="Supports both page-based (?page=1&page_size=20) and "
+            "offset-based (?offset=0&limit=10) pagination.",
         )
         async def list_handler(
-            page: int = Query(DEFAULT_PAGE_NUMBER, ge=DEFAULT_PAGE_NUMBER),
-            page_size: int = Query(
-                DEFAULT_PAGE_SIZE, ge=MIN_PAGE_SIZE, le=MAX_PAGE_SIZE
+            # Page-based params
+            page: int | None = Query(
+                None,
+                ge=1,
+                description="Page number (1-indexed) for page-based pagination",
+            ),
+            page_size: int | None = Query(
+                None,
+                ge=pagination_config.min_page_size,
+                le=pagination_config.max_page_size,
+                description="Items per page for page-based pagination",
+            ),
+            # Offset-based params
+            offset: int | None = Query(
+                None,
+                ge=0,
+                description="Starting offset (0-indexed) for offset-based pagination",
+            ),
+            limit: int | None = Query(
+                None,
+                ge=pagination_config.min_limit,
+                le=pagination_config.max_limit,
+                description="Maximum items to return for offset-based pagination",
             ),
         ) -> dict[str, Any]:
             result: QueryResult = self.store.list(
-                model_name, page=page, page_size=page_size
+                model_name,
+                page=page,
+                page_size=page_size,
+                offset=offset,
+                limit=limit,
             )
             return result.model_dump()
 

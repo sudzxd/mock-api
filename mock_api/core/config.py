@@ -41,19 +41,26 @@ from mock_api.core.constants import (
     DEFAULT_CORS_ENABLED,
     DEFAULT_CORS_ORIGINS,
     DEFAULT_HOST,
+    DEFAULT_LIMIT,
     DEFAULT_LOG_LEVEL,
+    DEFAULT_PAGE_SIZE,
     DEFAULT_PORT,
     DEFAULT_SEED_COUNT,
     DEFAULT_STRICT_MODE,
     ENV_VAR_PREFIX,
+    MAX_LIMIT,
+    MAX_PAGE_SIZE,
     MAX_PORT,
     MAX_SEED_COUNT,
+    MIN_LIMIT,
+    MIN_PAGE_SIZE,
     MIN_PORT,
     MIN_SEED_COUNT,
     BooleanValue,
     ConfigField,
     FileExtension,
     LogLevel,
+    PaginationStrategy,
 )
 from mock_api.core.exceptions import ConfigFileNotFoundError, ConfigParseError
 from mock_api.utils.logger import configure_logging
@@ -61,6 +68,76 @@ from mock_api.utils.logger import configure_logging
 # =============================================================================
 # CONFIGURATION SCHEMA
 # =============================================================================
+
+
+class PaginationConfig(BaseModel):
+    """Pagination configuration schema.
+
+    Attributes:
+        strategy: Default pagination strategy ("page" or "offset").
+        default_page_size: Default items per page for page-based pagination.
+        default_limit: Default limit for offset-based pagination.
+        max_page_size: Maximum page size allowed.
+        max_limit: Maximum limit allowed.
+        min_page_size: Minimum page size allowed.
+        min_limit: Minimum limit allowed.
+    """
+
+    strategy: str = Field(
+        default=PaginationStrategy.PAGE,
+        description="Default pagination strategy: 'page' or 'offset'",
+    )
+
+    default_page_size: int = Field(
+        default=DEFAULT_PAGE_SIZE,
+        description="Default page size for page-based pagination",
+        ge=MIN_PAGE_SIZE,
+        le=MAX_PAGE_SIZE,
+    )
+
+    default_limit: int = Field(
+        default=DEFAULT_LIMIT,
+        description="Default limit for offset-based pagination",
+        ge=MIN_LIMIT,
+        le=MAX_LIMIT,
+    )
+
+    max_page_size: int = Field(
+        default=MAX_PAGE_SIZE,
+        description="Maximum page size allowed",
+        ge=1,
+    )
+
+    max_limit: int = Field(
+        default=MAX_LIMIT,
+        description="Maximum limit allowed",
+        ge=1,
+    )
+
+    min_page_size: int = Field(
+        default=MIN_PAGE_SIZE,
+        description="Minimum page size allowed",
+        ge=1,
+    )
+
+    min_limit: int = Field(
+        default=MIN_LIMIT,
+        description="Minimum limit allowed",
+        ge=1,
+    )
+
+    @field_validator("strategy")
+    @classmethod
+    def validate_strategy(cls, v: str) -> str:
+        """Validate pagination strategy."""
+        valid_strategies = {PaginationStrategy.PAGE, PaginationStrategy.OFFSET}
+        if v not in valid_strategies:
+            raise ValueError(
+                f"Invalid pagination strategy: {v}. Must be one of {valid_strategies}"
+            )
+        return v
+
+    model_config = {"frozen": False, "extra": "forbid"}
 
 
 class Config(BaseModel):
@@ -123,6 +200,11 @@ class Config(BaseModel):
     strict_mode: bool = Field(
         default=DEFAULT_STRICT_MODE,
         description="Enable strict schema validation",
+    )
+
+    pagination: PaginationConfig = Field(
+        default_factory=PaginationConfig,
+        description="Pagination configuration",
     )
 
     @field_validator("locale")
