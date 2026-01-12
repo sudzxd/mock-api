@@ -1,0 +1,329 @@
+{
+  "info": {
+    "name": "mockapi-server E-commerce Example",
+    "description": "Complete API collection for the e-commerce example",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:3000/api/v1"
+    }
+  ],
+  "item": [
+    {
+      "name": "Customers",
+      "item": [
+        {
+          "name": "List Customers",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/customers",
+              "host": ["{{base_url}}"],
+              "path": ["customers"]
+            }
+          }
+        },
+        {
+          "name": "Get Customer by ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/customers/1",
+              "host": ["{{base_url}}"],
+              "path": ["customers", "1"]
+            }
+          }
+        },
+        {
+          "name": "Create Customer",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id\": 9999,\n  \"name\": \"John Doe\",\n  \"email\": \"john.doe@example.com\",\n  \"phone\": \"+1-555-0123\",\n  \"address\": \"123 Main St, New York, NY 10001\",\n  \"created_at\": \"2025-01-10T10:00:00Z\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/customers",
+              "host": ["{{base_url}}"],
+              "path": ["customers"]
+            }
+          }
+        },
+        {
+          "name": "Update Customer",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id\": 1,\n  \"name\": \"Jane Doe\",\n  \"email\": \"jane.doe@example.com\",\n  \"phone\": \"+1-555-9999\",\n  \"address\": \"456 Oak Ave, Boston, MA 02101\",\n  \"created_at\": \"2025-01-10T10:00:00Z\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/customers/1",
+              "host": ["{{base_url}}"],
+              "path": ["customers", "1"]
+            }
+          }
+        },
+        {
+          "name": "Delete Customer",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/customers/9999",
+              "host": ["{{base_url}}"],
+              "path": ["customers", "9999"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Products",
+      "item": [
+        {
+          "name": "List Products",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/products",
+              "host": ["{{base_url}}"],
+              "path": ["products"]
+            }
+          }
+        },
+        {
+          "name": "Get Product by ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/products/1",
+              "host": ["{{base_url}}"],
+              "path": ["products", "1"]
+            }
+          }
+        },
+        {
+          "name": "Create Product",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id\": 9999,\n  \"name\": \"Wireless Headphones\",\n  \"description\": \"Noise-cancelling Bluetooth headphones\",\n  \"price\": 199.99,\n  \"category\": \"electronics\",\n  \"stock_quantity\": 50,\n  \"created_at\": \"2025-01-10T10:00:00Z\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/products",
+              "host": ["{{base_url}}"],
+              "path": ["products"]
+            }
+          }
+        },
+        {
+          "name": "Filter Products by Category",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/products?category=electronics",
+              "host": ["{{base_url}}"],
+              "path": ["products"],
+              "query": [
+                {
+                  "key": "category",
+                  "value": "electronics"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Orders",
+      "item": [
+        {
+          "name": "List Orders",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/orders",
+              "host": ["{{base_url}}"],
+              "path": ["orders"]
+            }
+          }
+        },
+        {
+          "name": "Get Order by ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/orders/1",
+              "host": ["{{base_url}}"],
+              "path": ["orders", "1"]
+            }
+          }
+        },
+        {
+          "name": "Get Orders by Customer",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/orders?customer_id=1",
+              "host": ["{{base_url}}"],
+              "path": ["orders"],
+              "query": [
+                {
+                  "key": "customer_id",
+                  "value": "1"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Create Order",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id\": 9999,\n  \"customer_id\": 1,\n  \"status\": \"pending\",\n  \"total_amount\": 299.98,\n  \"created_at\": \"2025-01-10T10:00:00Z\",\n  \"updated_at\": \"2025-01-10T10:00:00Z\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/orders",
+              "host": ["{{base_url}}"],
+              "path": ["orders"]
+            }
+          }
+        },
+        {
+          "name": "Update Order Status",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id\": 1,\n  \"customer_id\": 1,\n  \"status\": \"shipped\",\n  \"total_amount\": 299.98,\n  \"created_at\": \"2025-01-10T10:00:00Z\",\n  \"updated_at\": \"2025-01-10T12:00:00Z\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/orders/1",
+              "host": ["{{base_url}}"],
+              "path": ["orders", "1"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Order Items",
+      "item": [
+        {
+          "name": "List Order Items",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/orderitems",
+              "host": ["{{base_url}}"],
+              "path": ["orderitems"]
+            }
+          }
+        },
+        {
+          "name": "Get Items by Order",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/orderitems?order_id=1",
+              "host": ["{{base_url}}"],
+              "path": ["orderitems"],
+              "query": [
+                {
+                  "key": "order_id",
+                  "value": "1"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Items by Product",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/orderitems?product_id=1",
+              "host": ["{{base_url}}"],
+              "path": ["orderitems"],
+              "query": [
+                {
+                  "key": "product_id",
+                  "value": "1"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Create Order Item",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id\": 9999,\n  \"order_id\": 1,\n  \"product_id\": 1,\n  \"quantity\": 2,\n  \"unit_price\": 149.99,\n  \"subtotal\": 299.98\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/orderitems",
+              "host": ["{{base_url}}"],
+              "path": ["orderitems"]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

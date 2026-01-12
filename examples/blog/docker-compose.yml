@@ -1,0 +1,20 @@
+version: '3.8'
+
+services:
+  mockapi:
+    image: python:3.11-slim
+    working_dir: /app
+    volumes:
+      - ./models.py:/app/models.py
+    ports:
+      - "3000:3000"
+    command: >
+      sh -c "
+        pip install mockapi-server &&
+        mockapi-server serve --models models.py --generate-data --data-count 50 --port 3000 --host 0.0.0.0
+      "
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/docs"]
+      interval: 10s
+      timeout: 5s
+      retries: 5

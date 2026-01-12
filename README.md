@@ -64,6 +64,14 @@ Access your API at `http://localhost:3000/api/v1` with auto-generated endpoints:
 - `POST /users`, `PUT /users/:id`, `DELETE /users/:id`
 - Interactive docs at `/docs`
 
+## Examples
+
+Check out the [examples/](examples/) directory for complete working projects:
+
+- **[Basic](examples/basic/)** - Simple User and Product API with HTML client
+- **[Blog](examples/blog/)** - Multi-model API with relationships and Docker setup
+- **[E-commerce](examples/ecommerce/)** - Complex relationships with Postman collection
+
 ## Why mockapi-server?
 
 **json-server:** Manual JSON files that get stale

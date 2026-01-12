@@ -108,6 +108,19 @@ Use it:
 mockapi-server serve --models models.py --config mockapi-server.yml
 ```
 
+## Example Projects
+
+Explore complete working examples in the [examples/](../examples/) directory:
+
+- **[Basic](../examples/basic/)** - Simple two-model API with interactive HTML client
+- **[Blog](../examples/blog/)** - Multi-model relationships with Docker support
+- **[E-commerce](../examples/ecommerce/)** - Complex relationships with Postman collection
+
+Each example includes:
+- Complete Pydantic models
+- Setup and run instructions
+- Testing tools (HTML client, Docker, or Postman)
+
 ## Next Steps
 
 - [CLI Reference](cli-reference.md) - All commands and options

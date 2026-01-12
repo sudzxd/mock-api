@@ -1,0 +1,392 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Basic Example - mockapi-server</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: #f5f5f5;
+            padding: 20px;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+        }
+        .subtitle {
+            color: #666;
+            margin-bottom: 30px;
+        }
+        .section {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        h2 {
+            color: #444;
+            margin-bottom: 15px;
+            border-bottom: 2px solid #007bff;
+            padding-bottom: 5px;
+        }
+        .controls {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+            flex-wrap: wrap;
+        }
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        button.secondary {
+            background: #6c757d;
+        }
+        button.secondary:hover {
+            background: #545b62;
+        }
+        button.danger {
+            background: #dc3545;
+        }
+        button.danger:hover {
+            background: #c82333;
+        }
+        input, textarea {
+            width: 100%;
+            padding: 8px;
+            margin: 5px 0;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 15px;
+        }
+        .card {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 4px;
+            border: 1px solid #dee2e6;
+        }
+        .card h3 {
+            color: #007bff;
+            margin-bottom: 10px;
+            font-size: 18px;
+        }
+        .card p {
+            margin: 5px 0;
+            color: #666;
+            font-size: 14px;
+        }
+        .card .label {
+            font-weight: 600;
+            color: #333;
+        }
+        pre {
+            background: #f4f4f4;
+            padding: 15px;
+            border-radius: 4px;
+            overflow-x: auto;
+            font-size: 13px;
+            border: 1px solid #ddd;
+        }
+        .error {
+            color: #dc3545;
+            background: #f8d7da;
+            padding: 10px;
+            border-radius: 4px;
+            margin-top: 10px;
+        }
+        .success {
+            color: #155724;
+            background: #d4edda;
+            padding: 10px;
+            border-radius: 4px;
+            margin-top: 10px;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 600;
+            color: #333;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>mockapi-server - Basic Example</h1>
+        <p class="subtitle">Interactive client for User and Product APIs</p>
+
+        <!-- Users Section -->
+        <div class="section">
+            <h2>Users</h2>
+            <div class="controls">
+                <button onclick="loadUsers()">Load Users</button>
+                <button class="secondary" onclick="showCreateUserForm()">Create User</button>
+            </div>
+            <div id="users-list" class="grid"></div>
+            <div id="user-form" style="display:none;">
+                <h3>Create New User</h3>
+                <div class="form-group">
+                    <label>Name:</label>
+                    <input type="text" id="user-name" placeholder="John Doe">
+                </div>
+                <div class="form-group">
+                    <label>Email:</label>
+                    <input type="email" id="user-email" placeholder="john@example.com">
+                </div>
+                <div class="form-group">
+                    <label>Age (optional):</label>
+                    <input type="number" id="user-age" placeholder="30">
+                </div>
+                <button onclick="createUser()">Submit</button>
+                <button class="secondary" onclick="hideCreateUserForm()">Cancel</button>
+            </div>
+            <div id="user-message"></div>
+        </div>
+
+        <!-- Products Section -->
+        <div class="section">
+            <h2>Products</h2>
+            <div class="controls">
+                <button onclick="loadProducts()">Load Products</button>
+                <button class="secondary" onclick="showCreateProductForm()">Create Product</button>
+            </div>
+            <div id="products-list" class="grid"></div>
+            <div id="product-form" style="display:none;">
+                <h3>Create New Product</h3>
+                <div class="form-group">
+                    <label>Name:</label>
+                    <input type="text" id="product-name" placeholder="Laptop">
+                </div>
+                <div class="form-group">
+                    <label>Description:</label>
+                    <textarea id="product-description" rows="3" placeholder="High-performance laptop"></textarea>
+                </div>
+                <div class="form-group">
+                    <label>Price:</label>
+                    <input type="number" step="0.01" id="product-price" placeholder="1299.99">
+                </div>
+                <div class="form-group">
+                    <label>
+                        <input type="checkbox" id="product-in-stock" checked>
+                        In Stock
+                    </label>
+                </div>
+                <button onclick="createProduct()">Submit</button>
+                <button class="secondary" onclick="hideCreateProductForm()">Cancel</button>
+            </div>
+            <div id="product-message"></div>
+        </div>
+
+        <!-- Raw Response Section -->
+        <div class="section">
+            <h2>Raw API Response</h2>
+            <pre id="raw-response">Click any "Load" button to see the raw API response here...</pre>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = 'http://localhost:3000/api/v1';
+
+        // Users
+        async function loadUsers() {
+            try {
+                const response = await fetch(`${API_BASE}/users`);
+                const data = await response.json();
+                const users = data.items || data; // Handle both paginated and non-paginated responses
+                displayUsers(users);
+                document.getElementById('raw-response').textContent = JSON.stringify(data, null, 2);
+            } catch (error) {
+                showMessage('user-message', `Error: ${error.message}`, 'error');
+            }
+        }
+
+        function displayUsers(users) {
+            const container = document.getElementById('users-list');
+            container.innerHTML = users.map(user => `
+                <div class="card">
+                    <h3>${user.name}</h3>
+                    <p><span class="label">ID:</span> ${user.id}</p>
+                    <p><span class="label">Email:</span> ${user.email}</p>
+                    <p><span class="label">Age:</span> ${user.age || 'N/A'}</p>
+                    <p><span class="label">Created:</span> ${new Date(user.created_at).toLocaleString()}</p>
+                    <button class="danger" onclick="deleteUser(${user.id})" style="margin-top: 10px;">Delete</button>
+                </div>
+            `).join('');
+        }
+
+        function showCreateUserForm() {
+            document.getElementById('user-form').style.display = 'block';
+        }
+
+        function hideCreateUserForm() {
+            document.getElementById('user-form').style.display = 'none';
+        }
+
+        async function createUser() {
+            const name = document.getElementById('user-name').value;
+            const email = document.getElementById('user-email').value;
+            const age = document.getElementById('user-age').value;
+
+            if (!name || !email) {
+                showMessage('user-message', 'Name and email are required', 'error');
+                return;
+            }
+
+            const newUser = {
+                id: Math.floor(Math.random() * 10000),
+                name,
+                email,
+                age: age ? parseInt(age) : null,
+                created_at: new Date().toISOString()
+            };
+
+            try {
+                const response = await fetch(`${API_BASE}/users`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(newUser)
+                });
+                const result = await response.json();
+                showMessage('user-message', 'User created successfully!', 'success');
+                hideCreateUserForm();
+                loadUsers();
+            } catch (error) {
+                showMessage('user-message', `Error: ${error.message}`, 'error');
+            }
+        }
+
+        async function deleteUser(id) {
+            if (!confirm('Are you sure you want to delete this user?')) return;
+
+            try {
+                await fetch(`${API_BASE}/users/${id}`, { method: 'DELETE' });
+                showMessage('user-message', 'User deleted successfully!', 'success');
+                loadUsers();
+            } catch (error) {
+                showMessage('user-message', `Error: ${error.message}`, 'error');
+            }
+        }
+
+        // Products
+        async function loadProducts() {
+            try {
+                const response = await fetch(`${API_BASE}/products`);
+                const data = await response.json();
+                const products = data.items || data; // Handle both paginated and non-paginated responses
+                displayProducts(products);
+                document.getElementById('raw-response').textContent = JSON.stringify(data, null, 2);
+            } catch (error) {
+                showMessage('product-message', `Error: ${error.message}`, 'error');
+            }
+        }
+
+        function displayProducts(products) {
+            const container = document.getElementById('products-list');
+            container.innerHTML = products.map(product => `
+                <div class="card">
+                    <h3>${product.name}</h3>
+                    <p><span class="label">ID:</span> ${product.id}</p>
+                    <p><span class="label">Price:</span> $${product.price.toFixed(2)}</p>
+                    <p><span class="label">In Stock:</span> ${product.in_stock ? 'Yes' : 'No'}</p>
+                    <p><span class="label">Description:</span> ${product.description}</p>
+                    <p><span class="label">Created:</span> ${new Date(product.created_at).toLocaleString()}</p>
+                    <button class="danger" onclick="deleteProduct(${product.id})" style="margin-top: 10px;">Delete</button>
+                </div>
+            `).join('');
+        }
+
+        function showCreateProductForm() {
+            document.getElementById('product-form').style.display = 'block';
+        }
+
+        function hideCreateProductForm() {
+            document.getElementById('product-form').style.display = 'none';
+        }
+
+        async function createProduct() {
+            const name = document.getElementById('product-name').value;
+            const description = document.getElementById('product-description').value;
+            const price = document.getElementById('product-price').value;
+            const inStock = document.getElementById('product-in-stock').checked;
+
+            if (!name || !description || !price) {
+                showMessage('product-message', 'All fields are required', 'error');
+                return;
+            }
+
+            const newProduct = {
+                id: Math.floor(Math.random() * 10000),
+                name,
+                description,
+                price: parseFloat(price),
+                in_stock: inStock,
+                created_at: new Date().toISOString()
+            };
+
+            try {
+                const response = await fetch(`${API_BASE}/products`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(newProduct)
+                });
+                const result = await response.json();
+                showMessage('product-message', 'Product created successfully!', 'success');
+                hideCreateProductForm();
+                loadProducts();
+            } catch (error) {
+                showMessage('product-message', `Error: ${error.message}`, 'error');
+            }
+        }
+
+        async function deleteProduct(id) {
+            if (!confirm('Are you sure you want to delete this product?')) return;
+
+            try {
+                await fetch(`${API_BASE}/products/${id}`, { method: 'DELETE' });
+                showMessage('product-message', 'Product deleted successfully!', 'success');
+                loadProducts();
+            } catch (error) {
+                showMessage('product-message', `Error: ${error.message}`, 'error');
+            }
+        }
+
+        // Utility
+        function showMessage(elementId, message, type) {
+            const element = document.getElementById(elementId);
+            element.className = type;
+            element.textContent = message;
+            setTimeout(() => element.textContent = '', 3000);
+        }
+
+        // Load initial data
+        loadUsers();
+        loadProducts();
+    </script>
+</body>
+</html>
