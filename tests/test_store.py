@@ -402,6 +402,89 @@ def test_list_uses_default_pagination(loaded_store: DataStore) -> None:
 
 
 # =============================================================================
+# TESTS: Offset-Based Pagination
+# =============================================================================
+
+
+def test_list_offset_based_first_batch(loaded_store: DataStore) -> None:
+    """Test offset-based pagination first batch."""
+    result = loaded_store.list("User", offset=0, limit=2)
+
+    assert len(result.items) == 2
+    assert result.items[0]["id"] == 1
+    assert result.items[1]["id"] == 2
+    assert result.pagination.offset == 0
+    assert result.pagination.limit == 2
+    assert result.pagination.total_items == 3
+    assert result.pagination.has_next is True
+    assert result.pagination.has_prev is False
+
+
+def test_list_offset_based_second_batch(loaded_store: DataStore) -> None:
+    """Test offset-based pagination second batch."""
+    result = loaded_store.list("User", offset=2, limit=2)
+
+    assert len(result.items) == 1
+    assert result.items[0]["id"] == 3
+    assert result.pagination.has_next is False
+    assert result.pagination.has_prev is True
+
+
+def test_list_offset_beyond_total(loaded_store: DataStore) -> None:
+    """Test offset-based pagination beyond total items."""
+    result = loaded_store.list("User", offset=10, limit=5)
+
+    assert len(result.items) == 0
+    assert result.pagination.has_next is False
+    assert result.pagination.has_prev is True
+
+
+def test_list_offset_invalid_negative(loaded_store: DataStore) -> None:
+    """Test list with invalid negative offset."""
+    with pytest.raises(StoreError, match="Invalid offset"):
+        loaded_store.list("User", offset=-1, limit=10)
+
+
+def test_list_offset_invalid_limit(loaded_store: DataStore) -> None:
+    """Test list with invalid limit."""
+    with pytest.raises(StoreError, match="Invalid limit"):
+        loaded_store.list("User", offset=0, limit=0)
+
+    with pytest.raises(StoreError, match="Invalid limit"):
+        loaded_store.list("User", offset=0, limit=200)
+
+
+def test_list_conflicting_pagination_params(loaded_store: DataStore) -> None:
+    """Test list with conflicting pagination parameters."""
+    with pytest.raises(StoreError, match="Cannot use both"):
+        loaded_store.list("User", page=1, offset=0)
+
+
+def test_list_offset_with_filter(store: DataStore) -> None:
+    """Test offset-based pagination with filter."""
+    for i in range(1, 11):
+        store.create("User", {"name": f"User {i}", "active": i % 2 == 0})
+
+    result = store.list("User", offset=0, limit=3, filter_func=lambda u: u["active"])
+
+    assert len(result.items) == 3
+    assert result.pagination.total_items == 5
+    assert all(u["active"] for u in result.items)
+
+
+def test_list_page_based_still_works(loaded_store: DataStore) -> None:
+    """Test that existing page-based pagination still works."""
+    result = loaded_store.list("User", page=1, page_size=2)
+
+    assert len(result.items) == 2
+    assert result.pagination.page == 1
+    assert result.pagination.page_size == 2
+    assert result.pagination.total_pages == 2
+    assert result.pagination.has_next is True
+    assert result.pagination.has_prev is False
+
+
+# =============================================================================
 # TESTS: Count Operation
 # =============================================================================
 

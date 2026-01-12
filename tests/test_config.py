@@ -280,11 +280,11 @@ def test_pagination_config_from_yaml(tmp_path: Path):
     config_file = tmp_path / "mockapi-server.yml"
     config_file.write_text(
         """
-pagination:
-  strategy: offset
-  default_limit: 15
-  max_limit: 200
-"""
+        pagination:
+          strategy: offset
+          default_limit: 15
+          max_limit: 200
+        """
     )
 
     config = get_config(config_file=config_file)
@@ -299,14 +299,14 @@ def test_pagination_config_from_json(tmp_path: Path):
     config_file = tmp_path / "mockapi-server.json"
     config_file.write_text(
         """
-{
-  "pagination": {
-    "strategy": "offset",
-    "default_limit": 25,
-    "max_page_size": 150
-  }
-}
-"""
+        {
+            "pagination": {
+              "strategy": "offset",
+              "default_limit": 25,
+              "max_page_size": 150
+            }
+        }
+        """
     )
 
     config = get_config(config_file=config_file)
