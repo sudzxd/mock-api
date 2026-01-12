@@ -2,435 +2,129 @@
 
 **For AI assistants working on the mockapi-server codebase**
 
-## Project Overview
+## What This Project Does
 
 **mockapi-server** generates full-featured REST APIs from Pydantic models in seconds.
 
-**Core Functionality:**
+Parse Pydantic models → Generate fake data → Create REST endpoints → Handle CRUD operations
 
-- Parse Pydantic models → Extract schema
-- Generate realistic fake data based on field types
-- Create FastAPI REST endpoints automatically
-- Handle CRUD operations with in-memory storage
-- Auto-detect foreign key relationships
-
-**Key Features:**
-
-- Zero configuration required
-- Type-safe (Pydantic v2 validation)
-- Smart data generation (semantic field matching)
-- Auto-relationship detection (e.g., `author_id` → `User`)
-- OpenAPI docs at `/docs`
-- Stateful in-memory storage
-
-**Tech Stack:**
-
-- Python 3.11+ (modern type hints: `list[str]`, `T | None`)
-- Pydantic v2 (schema validation)
-- FastAPI (REST API framework)
-- Click (CLI)
-- Faker (data generation)
-- Pytest (testing)
-
-**Status:** Under active development
+**Tech Stack:** Python 3.11+ | Pydantic v2 | FastAPI | Click CLI | Faker | Pytest
 
 **Repository:** <https://github.com/sudzxd/mockapi-server>
 
-## Documentation Structure
+## Where to Find Information
 
-**Recently cleaned and streamlined (2,809 lines, 41% reduction)**
+### For Implementation Tasks
 
-### Root Files
+- **Architecture & Components:** `docs/architecture.md` - SOLID principles, component diagram, data flow
+- **Code Style & Workflow:** `docs/development/guidelines.md` - Git workflow, code conventions, SOLID principles
+- **Testing Strategy:** `docs/development/testing.md` - Test patterns, coverage targets
+- **Dev Setup:** `docs/development/setup.md` - Environment setup, make commands
 
-- `README.md` - Project overview, quick start, features
-- `CONTRIBUTING.md` - Contribution guide, quick setup
-- `CHANGELOG.md` - Version history
-- `CODE_OF_CONDUCT.md` - Community guidelines
+### For Troubleshooting
 
-### User Documentation (`docs/`)
+- **Common Issues:** `docs/troubleshooting.md`
+- **FAQ:** `docs/faq.md`
+- **Examples:** `examples/` directory (basic, blog, ecommerce)
 
-- `index.md` - Navigation hub
-- `getting-started.md` - Installation, first API in 5 min
-- `cli-reference.md` - Complete command reference (328 lines)
-- `api-reference.md` - Python API + REST endpoints (522 lines)
-- `examples.md` - Real-world patterns (blog, frontend integration)
-- `faq.md` - 10 critical questions
-- `troubleshooting.md` - Common issues and solutions
-- `architecture.md` - SOLID principles, component diagram, data flow
+### For Users
 
-### Development Documentation (`docs/development/`)
+- **Getting Started:** `docs/getting-started.md`
+- **CLI Reference:** `docs/cli-reference.md`
+- **API Reference:** `docs/api-reference.md`
 
-- `setup.md` - Dev environment setup, make commands
-- `guidelines.md` - Git workflow, code style, SOLID principles (merged from best-practices + style-guide)
-- `testing.md` - Testing practices, coverage targets
-- `releasing.md` - Release process, versioning
-
-## Project Structure
+## Project Structure (High Level)
 
 ```
-mockapi-server/
-├── mock_api/              # Source code
-│   ├── cli/               # CLI commands (Click)
-│   │   ├── main.py        # Entry point, command groups
-│   │   ├── init.py        # Init command
-│   │   ├── serve.py       # Serve command
-│   │   ├── generate.py    # Generate command
-│   │   └── validate.py    # Validate command
-│   ├── core/              # Core business logic
-│   │   ├── parser.py      # SchemaParser: Pydantic → ModelSchema
-│   │   ├── generator.py   # DataGenerator: Schema → Fake data
-│   │   ├── store.py       # DataStore: In-memory CRUD
-│   │   ├── router.py      # RouteGenerator: Schema → FastAPI routes
-│   │   └── server.py      # Server: Orchestrator
-│   ├── integrations/      # External integrations
-│   └── utils/             # Utilities, logging
-├── tests/                 # Test suite
-│   ├── conftest.py        # Shared fixtures
-│   ├── fixtures/          # Test data models
-│   ├── test_*.py          # Unit tests
-│   └── benchmarks/        # Performance tests
-├── docs/                  # Documentation (see above)
-├── examples/              # Example projects
-│   ├── basic/
-│   ├── blog/
-│   └── ecommerce/
-├── pyproject.toml         # Project configuration
-├── Makefile               # Development commands
-└── mkdocs.yml             # Documentation site config
+mock_api/
+├── cli/        # Click commands (main.py, init.py, serve.py, generate.py, validate.py)
+├── core/       # Core logic (parser.py, generator.py, store.py, router.py, server.py)
+├── integrations/
+└── utils/
+tests/          # Unit tests + benchmarks
+docs/           # All documentation
+examples/       # Example projects
 ```
 
-## Development Conventions
+## Critical Quick Reference
 
-### Git Workflow
-
-**Branch Naming:**
-
-```
-<type>/<initials>/<issue-number>-<description>
-```
-
-Examples: `feat/ss/1-add-config`, `fix/ss/5-typescript-parser`
-
-**Commit Messages (Conventional Commits):**
-
-```
-<type>: <description>
-
-[optional body]
-```
-
-Types: `feat`, `fix`, `docs`, `style`, `refactor`, `test`, `chore`
-
-Example: `feat: add TypeScript model generator`
-
-**Workflow:**
-
-1. Branch off `develop`
-2. Make changes
-3. Run `make check`
-4. Commit with conventional format
-5. Create PR to `develop`
-
-**Pre-commit Hooks (automatic):**
-- Ruff linting/formatting
-- Trailing whitespace removal
-- YAML/TOML validation
-- Spell checking
-- Commit message format validation
-
-### Code Style
-
-**Type Hints (Python 3.11+):**
+### Type Hints (Python 3.11+ - NO Legacy Typing)
 
 ```python
-# Good
+# ✓ Use modern syntax
 def process(items: list[str]) -> dict[str, int]:
     name: str | None = None
 
-# Avoid
-from typing import List, Dict, Optional
-def process(items: List[str]) -> Dict[str, int]:
-    name: Optional[str] = None
+# ✗ Never use legacy typing
+from typing import List, Dict, Optional  # DON'T IMPORT THESE
 ```
 
-**Rules:**
+**Rules:** `list[T]`, `dict[K,V]`, `T | None`, `str | int` (NOT List, Dict, Optional, Union)
 
-- Use `list[T]` not `List[T]`
-- Use `dict[K, V]` not `Dict[K, V]`
-- Use `T | None` not `Optional[T]`
-- Use `str | int` not `Union[str, int]`
-- Exception: `Any`, `TypeVar`, `Generic`, `Protocol`, `Callable` from `typing`
+**Exception:** Only import from typing: `Any`, `TypeVar`, `Generic`, `Protocol`, `Callable`
 
-**Docstrings (Google-style):**
+### Git Workflow
 
-```python
-def generate_value(field: FieldSchema) -> Any:
-    """Generate realistic fake data for a field.
-
-    Args:
-        field: Field schema containing name and type information.
-
-    Returns:
-        Generated value appropriate for the field type.
-
-    Example:
-        >>> field = FieldSchema(name="email", type=str)
-        >>> value = generate_value(field)
-        >>> "@" in value
-        True
-    """
-```
-
-**Formatting:**
-
-- Line length: 88 characters
-- Indentation: 4 spaces
-- American English spelling
-- Ruff for formatting/linting
+- **Branch:** `<type>/<initials>/<issue>-<desc>` (e.g., `feat/ss/42-add-config`)
+- **Commit:** `<type>: <description>` (e.g., `feat: add TypeScript parser`)
+- **Types:** feat, fix, docs, style, refactor, test, chore
+- **Target:** Always branch off and PR to `develop`
 
 ### Testing
 
-**Test Naming:**
+- **Naming:** `test_<component>_<scenario>_<expected>()`
+- **Coverage:** Overall 90%+, Parser 95%+, Store 100%
+- **Commands:** `make test` (with coverage), `make test-fast`, `make check` (full validation)
 
-```
-test_<component>_<scenario>_<expected>
-```
+### Common Commands
 
-Example: `test_parser_with_valid_models_extracts_all_fields()`
+- **Setup:** `make dev` → `make hooks-install` → `make check`
+- **Development:** `make test`, `make lint`, `make format`, `make type-check`
+- **Full Check:** `make check` (run before every commit/PR)
+- **All Commands:** `make help`
 
-**Coverage Targets:**
+## For AI Assistants: Decision Tree
 
-- Overall: 90%+
-- Parser: 95%+
-- Generator: 90%+
-- Store: 100%
-- Router: 95%+
+### When Asked to Add a Feature
 
-**Commands:**
+1. Read `docs/architecture.md` to understand component architecture
+2. Read `docs/development/guidelines.md` for code style
+3. Check `examples/` for similar patterns
+4. Write code following modern Python 3.11+ syntax
+5. Add tests (see `docs/development/testing.md`)
+6. Run `make check`
+7. Follow git workflow: branch → commit → PR to `develop`
 
-```bash
-make test          # Tests with coverage
-make test-fast     # Fast (no coverage)
-make benchmark     # Performance tests
-```
+### When Asked to Fix a Bug
 
-### SOLID Principles (Brief)
+1. Check `docs/troubleshooting.md` for known issues
+2. Read relevant test files in `tests/` to understand expected behavior
+3. Fix the issue
+4. Add regression test
+5. Run `make check`
 
-- **Single Responsibility:** Each class handles one concern (Parser parses, Generator generates, Store stores)
-- **Open/Closed:** Extend via interfaces without modifying core
-- **Liskov Substitution:** All implementations return same types, swappable
-- **Interface Segregation:** Small, focused interfaces
-- **Dependency Inversion:** Depend on abstractions, use dependency injection
+### When Asked to Update Documentation
 
-## Architecture Quick Reference
+1. Check existing docs structure (see "Where to Find Information" above)
+2. Follow concise style - no duplication across docs
+3. Update only what's necessary
+4. Verify links and examples work
 
-### Components
+### When Reviewing Code
 
-```
-CLI Layer (Click)
-    ↓
-Server (Orchestrator)
-    ↓
-    ├── SchemaParser:    Pydantic → ModelSchema
-    ├── DataGenerator:   ModelSchema → Fake data
-    ├── DataStore:       In-memory CRUD operations
-    └── RouteGenerator:  ModelSchema → FastAPI routes
-    ↓
-FastAPI Application
-```
+Verify:
+- Modern type hints (no `List`, `Dict`, `Optional`)
+- Test coverage meets targets
+- Follows SOLID principles (see `docs/architecture.md`)
+- Google-style docstrings
+- Conventional commit messages
+- All `make check` passes
 
-**SchemaParser:**
+## Critical Rules
 
-- Input: Python file path
-- Output: `dict[str, ModelSchema]`
-- Extracts Pydantic models, detects FKs (`author_id` → `User`)
-
-**DataGenerator:**
-
-- Input: ModelSchema, count
-- Output: `list[dict]`
-- Generates realistic data based on field names (email, name, phone)
-
-**DataStore:**
-
-- Input: Model name, data
-- Output: Data or None
-- In-memory `dict[model_name, list[dict]]`, CRUD operations
-
-**RouteGenerator:**
-
-- Input: ModelSchema, DataStore
-- Output: FastAPI router
-- Generates GET, POST, PUT, DELETE endpoints
-
-**Server:**
-
-- Orchestrates all components
-- Configures FastAPI, CORS, OpenAPI docs
-
-### Data Flow
-
-```
-models.py → SchemaParser → ModelSchema[] → DataGenerator → Fake Data[] → DataStore
-                                                                            ↓
-Client Request → FastAPI Router → Route Handler → DataStore (CRUD) → Response
-```
-
-### Extension Points
-
-- Custom generators: Implement custom data generation
-- Custom storage: Replace in-memory with database
-- Custom parsers: Add TypeScript, OpenAPI support
-
-## Common Tasks
-
-### Setup Dev Environment
-
-```bash
-git clone https://github.com/sudzxd/mockapi-server
-cd mockapi-server
-make dev                # Install dependencies
-make hooks-install      # Install pre-commit hooks
-make check              # Verify setup
-```
-
-### Run Tests
-
-```bash
-make test               # Tests with coverage
-make test-fast          # Fast (no coverage)
-make lint               # Run linter
-make format             # Format code
-make type-check         # Type checking
-make check              # All quality checks
-make ci                 # CI simulation
-```
-
-### Add New Feature
-
-1. Create branch: `git checkout -b feat/ss/123-feature-name`
-2. Make changes following guidelines
-3. Add tests (coverage required)
-4. Run `make check`
-5. Commit: `git commit -m "feat: add feature"`
-6. Create PR to `develop`
-
-### Create Release (Maintainers)
-
-```bash
-# 1. Create release branch
-git checkout -b release/v0.1.0
-
-# 2. Update version in pyproject.toml
-# 3. Update CHANGELOG.md
-
-# 4. Create PR to main, merge
-gh pr create --base main
-gh pr merge --merge
-
-# 5. Tag release
-git tag -a v0.1.0 -m "Release v0.1.0"
-git push origin v0.1.0  # Triggers PyPI release
-
-# 6. Merge back to develop
-git checkout develop
-git merge main
-git push
-```
-
-### Common Troubleshooting
-
-**Import errors:** `pip install -e ".[dev]"`
-
-**Port in use:** `mockapi-server serve --models models.py --port 8000`
-
-**CORS errors:** Enable in `mockapi-server.yml`:
-
-```yaml
-cors_enabled: true
-cors_origins: ["*"]
-```
-
-**See:** `docs/troubleshooting.md` for full guide
-
-## Key Files Reference
-
-### CLI
-
-- `mock_api/cli/main.py` - Entry point, command groups
-- `mock_api/cli/init.py` - Project initialization
-- `mock_api/cli/serve.py` - Server command
-- `mock_api/cli/generate.py` - Data generation command
-- `mock_api/cli/validate.py` - Model validation command
-
-### Core
-
-- `mock_api/core/parser.py` - SchemaParser: Parse Pydantic models
-- `mock_api/core/generator.py` - DataGenerator: Generate fake data
-- `mock_api/core/store.py` - DataStore: In-memory CRUD
-- `mock_api/core/router.py` - RouteGenerator: Create FastAPI routes
-- `mock_api/core/server.py` - Server: Orchestrate components
-
-### Tests
-
-- `tests/conftest.py` - Shared pytest fixtures
-- `tests/test_parser.py` - Parser tests
-- `tests/test_generator.py` - Generator tests
-- `tests/test_store.py` - Store tests
-- `tests/test_router.py` - Router tests
-- `tests/test_server.py` - Server tests
-- `tests/benchmarks/` - Performance benchmarks
-
-### Configuration
-
-- `pyproject.toml` - Project metadata, dependencies
-- `Makefile` - Development commands
-- `mkdocs.yml` - Documentation site configuration
-- `.pre-commit-config.yaml` - Pre-commit hooks
-
-## Make Commands Reference
-
-| Command           | Description               |
-| ----------------- | ------------------------- |
-| `make dev`        | Install all dependencies  |
-| `make test`       | Run tests with coverage   |
-| `make test-fast`  | Fast tests (no coverage)  |
-| `make lint`       | Run linter                |
-| `make lint-fix`   | Auto-fix lint issues      |
-| `make format`     | Format code               |
-| `make type-check` | Type checking             |
-| `make check`      | All quality checks        |
-| `make quick`      | Fast check (lint + tests) |
-| `make pre-commit` | Pre-commit checks         |
-| `make ci`         | CI pipeline simulation    |
-| `make benchmark`  | Run benchmarks            |
-| `make clean`      | Remove build artifacts    |
-| `make run`        | Run example server        |
-| `make help`       | Show all commands         |
-
-## Quick Links
-
-- **GitHub:** <https://github.com/sudzxd/mockapi-server>
-- **Issues:** <https://github.com/sudzxd/mockapi-server/issues>
-- **PyPI:** <https://pypi.org/project/mockapi-server/>
-- **Docs:** See `docs/` directory
-- **Examples:** See `examples/` directory
-
-## For AI Assistants
-
-**When asked to:**
-
-- **Add feature:** Check architecture.md, follow guidelines.md conventions
-- **Fix bug:** Check troubleshooting.md first, add test
-- **Update docs:** Follow concise style, no duplication
-- **Review code:** Verify type hints, coverage, SOLID principles
-- **Create PR:** Follow branch naming, conventional commits
-
-**Always:**
-
-1. Read relevant docs before making changes
-2. Run `make check` before committing
-3. Add tests for new features
-4. Update documentation if needed
-5. Follow SOLID principles
-6. Use modern Python 3.11+ syntax
+1. **Always read relevant docs before making changes** (don't guess)
+2. **Never use legacy typing** (List, Dict, Optional, Union)
+3. **Run `make check` before every commit**
+4. **Add tests for all new features** (non-negotiable)
+5. **Branch off `develop`**, not `main`
+6. **Use conventional commits** (feat:, fix:, etc.)
