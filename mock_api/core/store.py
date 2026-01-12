@@ -26,14 +26,18 @@ from typing import Any
 # Project/local
 from ..utils.logger import get_logger
 from .constants import (
+    DEFAULT_LIMIT,
+    DEFAULT_OFFSET,
     DEFAULT_PAGE_NUMBER,
     DEFAULT_PAGE_SIZE,
+    MAX_LIMIT,
     MAX_PAGE_SIZE,
+    MIN_LIMIT,
     MIN_PAGE_SIZE,
     PRIMARY_KEY_FIELD,
 )
 from .exceptions import DuplicateInstanceError, InstanceNotFoundError, StoreError
-from .types import PaginationInfo, QueryResult
+from .types import PaginationInfo, PaginationParams, QueryResult
 
 # =============================================================================
 # TYPES & CONSTANTS
@@ -276,47 +280,44 @@ class DataStore:
     def list(
         self,
         model_name: str,
-        page: int = DEFAULT_PAGE_NUMBER,
-        page_size: int = DEFAULT_PAGE_SIZE,
+        page: int | None = None,
+        page_size: int | None = None,
+        offset: int | None = None,
+        limit: int | None = None,
         filter_func: FilterFunc | None = None,
     ) -> QueryResult:
         """List instances with pagination and optional filtering.
 
+        Supports both page-based and offset-based pagination. Strategy is
+        auto-detected based on which parameters are provided.
+
         Args:
             model_name: Name of the model.
-            page: Page number (1-indexed).
+            page: Page number (1-indexed) for page-based pagination.
             page_size: Number of items per page.
+            offset: Starting offset (0-indexed) for offset-based pagination.
+            limit: Maximum items to return.
             filter_func: Optional function to filter instances.
 
         Returns:
             QueryResult with items and pagination info.
 
         Raises:
-            ValueError: If pagination parameters are invalid.
+            StoreError: If pagination parameters are invalid or conflicting.
 
         Time Complexity:
-        - Without filter: O(k) where k is page size
+        - Without filter: O(k) where k is page size/limit
         - With filter: O(n) where n is total instances
 
         Example:
+            # Page-based
             >>> result = store.list("User", page=1, page_size=10)
-            >>> len(result.items)
-            5
-            >>> result.pagination.total_items
-            5
-        """
-        # Validate pagination parameters
-        if page < DEFAULT_PAGE_NUMBER:
-            raise StoreError(
-                f"Invalid page number: {page}",
-                f"Page must be >= {DEFAULT_PAGE_NUMBER}",
-            )
 
-        if page_size < MIN_PAGE_SIZE or page_size > MAX_PAGE_SIZE:
-            raise StoreError(
-                f"Invalid page size: {page_size}",
-                f"Page size must be between {MIN_PAGE_SIZE} and {MAX_PAGE_SIZE}",
-            )
+            # Offset-based
+            >>> result = store.list("User", offset=0, limit=10)
+        """
+        # Detect strategy and validate parameters
+        params = self._detect_pagination_strategy(page, page_size, offset, limit)
 
         with self._lock:
             # Get all instances for model - values() on OrderedDict maintains order
@@ -329,27 +330,125 @@ class DataStore:
             if filter_func:
                 instances = [inst for inst in instances if filter_func(inst)]
 
-            # Calculate pagination
+            # Calculate pagination based on strategy
             total_items = len(instances)
-            total_pages = math.ceil(total_items / page_size) if total_items > 0 else 1
 
-            # Get page slice - O(k) where k is page_size
-            start_idx = (page - 1) * page_size
-            end_idx = start_idx + page_size
-            page_items = instances[start_idx:end_idx]
+            # Get slice - O(k) where k is batch_size
+            end_idx = params.start_idx + params.batch_size
+            batch_items = instances[params.start_idx : end_idx]
 
-            pagination = PaginationInfo(
-                page=page,
-                page_size=page_size,
-                total_items=total_items,
-                total_pages=total_pages,
+            # Build pagination info based on strategy
+            if params.strategy == "page":
+                total_pages = (
+                    math.ceil(total_items / params.batch_size) if total_items > 0 else 1
+                )
+                has_next = params.page_num < total_pages
+                has_prev = params.page_num > 1
+
+                pagination = PaginationInfo(
+                    total_items=total_items,
+                    has_next=has_next,
+                    has_prev=has_prev,
+                    page=params.page_num,
+                    page_size=params.batch_size,
+                    total_pages=total_pages,
+                )
+
+                logger.debug(
+                    f"Listed {len(batch_items)} {model_name}(s) "
+                    f"(page {params.page_num}/{total_pages})"
+                )
+            else:  # offset strategy
+                has_next = end_idx < total_items
+                has_prev = params.start_idx > 0
+
+                pagination = PaginationInfo(
+                    total_items=total_items,
+                    has_next=has_next,
+                    has_prev=has_prev,
+                    offset=params.start_idx,
+                    limit=params.batch_size,
+                )
+
+                logger.debug(
+                    f"Listed {len(batch_items)} {model_name}(s) "
+                    f"(offset {params.start_idx}, limit {params.batch_size})"
+                )
+
+            return QueryResult(items=deepcopy(batch_items), pagination=pagination)
+
+    def _detect_pagination_strategy(
+        self,
+        page: int | None,
+        page_size: int | None,
+        offset: int | None,
+        limit: int | None,
+    ) -> PaginationParams:
+        """Detect pagination strategy and return normalized params.
+
+        Returns:
+            PaginationParams with strategy, start_idx, batch_size, and page_num
+
+        Raises:
+            StoreError: If conflicting params provided or invalid values
+        """
+        has_offset_params = offset is not None or limit is not None
+        has_page_params = page is not None or page_size is not None
+
+        # Check for conflicting params
+        if has_offset_params and has_page_params:
+            raise StoreError(
+                "Cannot use both page-based and offset-based pagination",
+                "Use either (page, page_size) or (offset, limit), not both",
             )
 
-            logger.debug(
-                f"Listed {len(page_items)} {model_name}(s) (page {page}/{total_pages})"
+        if has_offset_params:
+            # Offset-based strategy
+            offset_val = offset if offset is not None else DEFAULT_OFFSET
+            limit_val = limit if limit is not None else DEFAULT_LIMIT
+
+            # Validate
+            if offset_val < 0:
+                raise StoreError(
+                    f"Invalid offset: {offset_val}",
+                    "Offset must be >= 0",
+                )
+            if limit_val < MIN_LIMIT or limit_val > MAX_LIMIT:
+                raise StoreError(
+                    f"Invalid limit: {limit_val}",
+                    f"Limit must be between {MIN_LIMIT} and {MAX_LIMIT}",
+                )
+
+            return PaginationParams(
+                strategy="offset",
+                start_idx=offset_val,
+                batch_size=limit_val,
+                page_num=0,
             )
 
-            return QueryResult(items=deepcopy(page_items), pagination=pagination)
+        # Page-based strategy (default)
+        page_val = page if page is not None else DEFAULT_PAGE_NUMBER
+        page_size_val = page_size if page_size is not None else DEFAULT_PAGE_SIZE
+
+        # Validate
+        if page_val < DEFAULT_PAGE_NUMBER:
+            raise StoreError(
+                f"Invalid page number: {page_val}",
+                f"Page must be >= {DEFAULT_PAGE_NUMBER}",
+            )
+        if page_size_val < MIN_PAGE_SIZE or page_size_val > MAX_PAGE_SIZE:
+            raise StoreError(
+                f"Invalid page size: {page_size_val}",
+                f"Page size must be between {MIN_PAGE_SIZE} and {MAX_PAGE_SIZE}",
+            )
+
+        start_idx = (page_val - 1) * page_size_val
+        return PaginationParams(
+            strategy="page",
+            start_idx=start_idx,
+            batch_size=page_size_val,
+            page_num=page_val,
+        )
 
     def count(self, model_name: str, filter_func: FilterFunc | None = None) -> int:
         """Count instances, optionally with filtering.

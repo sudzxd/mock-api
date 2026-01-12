@@ -290,6 +290,14 @@ cors_enabled: true
 cors_origins:
   - "*"
   - "http://localhost:3001"
+
+# Pagination
+pagination:
+  strategy: page # page or offset
+  default_page_size: 20
+  default_limit: 20
+  max_page_size: 100
+  max_limit: 100
 ```
 
 CLI options override config file values:

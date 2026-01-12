@@ -436,6 +436,35 @@ Multiple filters are AND'ed:
 GET /api/v1/posts?author_id=5&published=true
 ```
 
+### Pagination
+
+**Page-based (default):**
+
+```http
+GET /api/v1/users?page=1&page_size=20
+```
+
+**Offset-based:**
+
+```http
+GET /api/v1/users?offset=0&limit=10
+```
+
+Both return:
+
+```json
+{
+  "items": [...],
+  "pagination": {
+    "total_items": 100,
+    "has_next": true,
+    "has_prev": false
+  }
+}
+```
+
+Cannot mix strategies in one request. Configure defaults in `mockapi-server.yml`.
+
 ---
 
 ## Model Schema Types
