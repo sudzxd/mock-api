@@ -21,11 +21,11 @@ from __future__ import annotations
 # IMPORTS
 # =============================================================================
 # Standard library
-from typing import Annotated, Any, cast
+from typing import Any, cast
 
 # Third-party
 from fastapi import APIRouter as FastAPIRouter
-from fastapi import Body, HTTPException, Query
+from fastapi import HTTPException, Query
 from pydantic import BaseModel, ValidationError, create_model
 
 # Project/local
@@ -321,17 +321,8 @@ class RouterGenerator:
         input_model = self._registry.get_input_model(model_name)
         response_model = self._registry.get_response_model(model_name)
 
-        @self._router.post(
-            base_path,
-            response_model=response_model,
-            status_code=HTTPStatus.CREATED,
-            tags=[tag],
-            summary=f"Create {model_name}",
-            description=RouteDescription.CREATE,
-        )
-        async def create_handler(
-            data: Annotated[dict[str, Any], Body()],
-        ) -> dict[str, Any]:
+        # Create handler without Body() annotation since we'll specify schema manually
+        async def create_handler(data: dict[str, Any]) -> dict[str, Any]:
             try:
                 validated = input_model.model_validate(data)
                 return self.store.create(model_name, validated.model_dump())
@@ -339,6 +330,21 @@ class RouterGenerator:
                 raise HTTPException(
                     status_code=HTTPStatus.UNPROCESSABLE_ENTITY, detail=e.errors()
                 ) from None
+
+        # Override the function's annotation with the actual input model
+        # This allows FastAPI to generate proper OpenAPI schema
+        create_handler.__annotations__["data"] = input_model
+
+        self._router.add_api_route(
+            base_path,
+            create_handler,
+            methods=["POST"],
+            response_model=response_model,
+            status_code=HTTPStatus.CREATED,
+            tags=[tag],
+            summary=f"Create {model_name}",
+            description=RouteDescription.CREATE,
+        )
 
     def _add_read_route(self, model_name: str, base_path: str, tag: str) -> None:
         """Add READ route (GET /models/{id})."""
@@ -364,15 +370,8 @@ class RouterGenerator:
         input_model = self._registry.get_input_model(model_name)
         response_model = self._registry.get_response_model(model_name)
 
-        @self._router.put(
-            f"{base_path}{URL_PATH_SEPARATOR}{URL_ID_PATH_SEGMENT}",
-            response_model=response_model,
-            tags=[tag],
-            summary=f"Update {model_name}",
-            description=RouteDescription.UPDATE,
-        )
         async def update_handler(
-            instance_id: int, data: Annotated[dict[str, Any], Body()]
+            instance_id: int, data: dict[str, Any]
         ) -> dict[str, Any]:
             try:
                 validated = input_model.model_validate(data)
@@ -387,6 +386,20 @@ class RouterGenerator:
                 raise HTTPException(
                     status_code=HTTPStatus.NOT_FOUND, detail=RouteDescription.NOT_FOUND
                 ) from None
+
+        # Override the function's annotation with the actual input model
+        # This allows FastAPI to generate proper OpenAPI schema
+        update_handler.__annotations__["data"] = input_model
+
+        self._router.add_api_route(
+            f"{base_path}{URL_PATH_SEPARATOR}{URL_ID_PATH_SEGMENT}",
+            update_handler,
+            methods=["PUT"],
+            response_model=response_model,
+            tags=[tag],
+            summary=f"Update {model_name}",
+            description=RouteDescription.UPDATE,
+        )
 
     def _add_delete_route(self, model_name: str, base_path: str, tag: str) -> None:
         """Add DELETE route (DELETE /models/{id})."""
