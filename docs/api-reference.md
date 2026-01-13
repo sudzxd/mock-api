@@ -417,6 +417,30 @@ DELETE /api/v1/users/{id}
 
 **Response (204 No Content)**
 
+### Bulk Operations
+
+Process multiple entities in a single request. All-or-nothing by default.
+
+**Bulk Create:** `POST /api/v1/users/bulk` with `{"data": [...]}`
+**Bulk Update:** `PUT /api/v1/users/bulk` with `{"data": [{id: 1, ...}, ...]}`
+**Bulk Delete:** `DELETE /api/v1/users/bulk?ids=1,2,3`
+
+**Configuration:**
+```yaml
+bulk_operations:
+  max_batch_size: 1000  # Max items per request (default: 1000, max: 10000)
+  allow_partial: false  # Continue on errors (default: false)
+```
+
+**Response format:**
+```json
+{
+  "created": 2,  // or "updated", "deleted"
+  "data": [...],  // or "ids" for delete
+  "errors": []   // only if allow_partial=true
+}
+```
+
 ---
 
 ## Query Parameters

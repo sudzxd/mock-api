@@ -32,6 +32,7 @@ mockapi-server serve --models models.py --generate-data
 - **Type-safe** - Built on Pydantic for automatic validation
 - **Smart data** - Realistic fake data based on field names
 - **Auto relationships** - Detects foreign keys, creates nested routes
+- **Bulk operations** - Create, update, delete multiple entities atomically
 - **Stateful** - CRUD operations persist during session
 - **OpenAPI** - Auto-generated interactive docs
 
@@ -62,6 +63,7 @@ mockapi-server serve --models models.py --generate-data --data-count 50
 Access your API at `http://localhost:3000/api/v1` with auto-generated endpoints:
 - `GET /users`, `GET /users/:id`
 - `POST /users`, `PUT /users/:id`, `DELETE /users/:id`
+- `POST /users/bulk`, `PUT /users/bulk`, `DELETE /users/bulk?ids=1,2,3`
 - Interactive docs at `/docs`
 
 ## Examples
