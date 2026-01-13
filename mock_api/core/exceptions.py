@@ -15,7 +15,8 @@ Exception Hierarchy:
     ├── ModelNotFoundError
     ├── StoreError
     │   ├── InstanceNotFoundError
-    │   └── DuplicateInstanceError
+    │   ├── DuplicateInstanceError
+    │   └── BatchSizeExceededError
     └── InitializationError
         ├── FileExistsError
         └── InvalidProjectNameError
@@ -292,6 +293,31 @@ class DuplicateInstanceError(StoreError):
         super().__init__(message, suggestion)
         self.model_name = model_name
         self.instance_id = instance_id
+
+
+class BatchSizeExceededError(StoreError):
+    """Raised when bulk operation batch size exceeds the configured limit.
+
+    Example:
+        >>> raise BatchSizeExceededError(1500, 1000)
+        BatchSizeExceededError: Batch size 1500 exceeds maximum allowed: 1000
+    """
+
+    def __init__(self, batch_size: int, max_batch_size: int) -> None:
+        """Initialize the exception.
+
+        Args:
+            batch_size: The actual batch size requested.
+            max_batch_size: The maximum allowed batch size.
+        """
+        message = f"Batch size {batch_size} exceeds maximum allowed: {max_batch_size}"
+        suggestion = (
+            f"Reduce batch size to {max_batch_size} or fewer items, "
+            "or increase max_batch_size in configuration."
+        )
+        super().__init__(message, suggestion)
+        self.batch_size = batch_size
+        self.max_batch_size = max_batch_size
 
 
 # =============================================================================

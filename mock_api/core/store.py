@@ -35,11 +35,24 @@ from .constants import (
     MIN_LIMIT,
     MIN_PAGE_SIZE,
     PRIMARY_KEY_FIELD,
+    BulkResponseKey,
     FilterOperator,
     SortDirection,
 )
-from .exceptions import DuplicateInstanceError, InstanceNotFoundError, StoreError
-from .types import FilterSpec, PaginationInfo, PaginationParams, QueryResult, SortSpec
+from .exceptions import (
+    BatchSizeExceededError,
+    DuplicateInstanceError,
+    InstanceNotFoundError,
+    StoreError,
+)
+from .types import (
+    BulkOperationError,
+    FilterSpec,
+    PaginationInfo,
+    PaginationParams,
+    QueryResult,
+    SortSpec,
+)
 
 # =============================================================================
 # TYPES & CONSTANTS
@@ -291,6 +304,273 @@ class DataStore:
                 return True
 
             return False
+
+    def bulk_create(
+        self,
+        model_name: str,
+        data_list: list[dict[str, Any]],
+        allow_partial: bool = False,
+        max_batch_size: int | None = None,
+    ) -> dict[str, Any]:
+        """Create multiple instances atomically.
+
+        Args:
+            model_name: Name of the model to create.
+            data_list: List of instance dictionaries to create.
+            allow_partial: If True, continue on errors; if False, rollback on
+                first error.
+            max_batch_size: Maximum batch size allowed (optional validation).
+
+        Returns:
+            Dict with 'created' count, 'data' list, and optional 'errors' list.
+
+        Raises:
+            BatchSizeExceededError: If batch size exceeds maximum.
+
+        Time Complexity: O(n) where n is batch size
+
+        Example:
+            >>> result = store.bulk_create("User", [
+            ...     {"name": "Alice"},
+            ...     {"name": "Bob"}
+            ... ])
+            >>> result["created"]
+            2
+        """
+        self._validate_batch_size(len(data_list), max_batch_size)
+
+        with self._lock:
+            # Ensure model exists
+            if model_name not in self._data:
+                self._data[model_name] = OrderedDict()
+                self._id_counters[model_name] = 0
+
+            created_items: list[dict[str, Any]] = []
+            created_ids: list[int] = []
+            errors: list[BulkOperationError] = []
+
+            for idx, data in enumerate(data_list):
+                try:
+                    instance = deepcopy(data)
+
+                    # Auto-assign ID
+                    if PRIMARY_KEY_FIELD not in instance:
+                        self._id_counters[model_name] += 1
+                        instance[PRIMARY_KEY_FIELD] = self._id_counters[model_name]
+
+                    instance_id = instance[PRIMARY_KEY_FIELD]
+
+                    # Check for duplicate
+                    self._check_duplicate_id(model_name, instance_id)
+
+                    # Add to store
+                    self._data[model_name][instance_id] = instance
+                    created_items.append(deepcopy(instance))
+                    created_ids.append(instance_id)
+
+                except Exception as e:
+                    error = BulkOperationError(index=idx, item=data, error=str(e))
+                    errors.append(error)
+
+                    if not allow_partial:
+                        # Rollback all created items
+                        for created_id in created_ids:
+                            self._data[model_name].pop(created_id, None)
+                        raise
+
+            logger.info(
+                f"Bulk created {len(created_items)}/{len(data_list)} {model_name}(s)"
+            )
+
+            return self._build_bulk_result(
+                BulkResponseKey.CREATED, len(created_items), created_items, errors
+            )
+
+    def bulk_update(
+        self,
+        model_name: str,
+        data_list: list[dict[str, Any]],
+        allow_partial: bool = False,
+        max_batch_size: int | None = None,
+    ) -> dict[str, Any]:
+        """Update multiple instances atomically.
+
+        Args:
+            model_name: Name of the model.
+            data_list: List of dicts with 'id' and fields to update.
+            allow_partial: If True, continue on errors; if False, rollback on
+                first error.
+            max_batch_size: Maximum batch size allowed (optional validation).
+
+        Returns:
+            Dict with 'updated' count, 'data' list, and optional 'errors' list.
+
+        Raises:
+            BatchSizeExceededError: If batch size exceeds maximum.
+            InstanceNotFoundError: If instance not found (when not in partial mode).
+
+        Time Complexity: O(n) where n is batch size
+
+        Example:
+            >>> result = store.bulk_update("User", [
+            ...     {"id": 1, "name": "Alice Updated"},
+            ...     {"id": 2, "name": "Bob Updated"}
+            ... ])
+            >>> result["updated"]
+            2
+        """
+        self._validate_batch_size(len(data_list), max_batch_size)
+
+        with self._lock:
+            if model_name not in self._data:
+                if not allow_partial:
+                    raise InstanceNotFoundError(model_name, -1)
+                return self._build_bulk_result(
+                    BulkResponseKey.UPDATED,
+                    0,
+                    [],
+                    [
+                        BulkOperationError(idx, data, f"Model {model_name} not found")
+                        for idx, data in enumerate(data_list)
+                    ],
+                )
+
+            updated_items: list[dict[str, Any]] = []
+            original_values: dict[int, dict[str, Any]] = {}
+            errors: list[BulkOperationError] = []
+
+            for idx, data in enumerate(data_list):
+                try:
+                    # Validate ID present
+                    self._validate_id_present(data)
+
+                    instance_id = data[PRIMARY_KEY_FIELD]
+
+                    # Check exists
+                    self._check_instance_exists(model_name, instance_id)
+
+                    # Store original for rollback
+                    original_values[instance_id] = deepcopy(
+                        self._data[model_name][instance_id]
+                    )
+
+                    # Update fields
+                    instance = self._data[model_name][instance_id]
+                    instance.update(data)
+                    instance[PRIMARY_KEY_FIELD] = instance_id
+
+                    updated_items.append(deepcopy(instance))
+
+                except Exception as e:
+                    error = BulkOperationError(index=idx, item=data, error=str(e))
+                    errors.append(error)
+
+                    if not allow_partial:
+                        # Rollback all updates
+                        for orig_id, orig_data in original_values.items():
+                            self._data[model_name][orig_id] = orig_data
+                        raise
+
+            logger.info(
+                f"Bulk updated {len(updated_items)}/{len(data_list)} {model_name}(s)"
+            )
+
+            return self._build_bulk_result(
+                BulkResponseKey.UPDATED, len(updated_items), updated_items, errors
+            )
+
+    def bulk_delete(
+        self,
+        model_name: str,
+        ids: list[int],
+        allow_partial: bool = False,
+        max_batch_size: int | None = None,
+    ) -> dict[str, Any]:
+        """Delete multiple instances atomically.
+
+        Args:
+            model_name: Name of the model.
+            ids: List of instance IDs to delete.
+            allow_partial: If True, continue on errors; if False, rollback on
+                first error.
+            max_batch_size: Maximum batch size allowed (optional validation).
+
+        Returns:
+            Dict with 'deleted' count, 'ids' list, and optional 'errors' list.
+
+        Raises:
+            BatchSizeExceededError: If batch size exceeds maximum.
+            InstanceNotFoundError: If instance not found (when not in partial mode).
+
+        Time Complexity: O(n) where n is batch size
+
+        Example:
+            >>> result = store.bulk_delete("User", [1, 2, 3])
+            >>> result["deleted"]
+            3
+        """
+        self._validate_batch_size(len(ids), max_batch_size)
+
+        with self._lock:
+            if model_name not in self._data:
+                if not allow_partial:
+                    raise InstanceNotFoundError(model_name, -1)
+                return self._build_bulk_result(
+                    BulkResponseKey.DELETED,
+                    0,
+                    [],
+                    [
+                        BulkOperationError(
+                            idx,
+                            {PRIMARY_KEY_FIELD: instance_id},
+                            f"Model {model_name} not found",
+                        )
+                        for idx, instance_id in enumerate(ids)
+                    ],
+                    data_key=BulkResponseKey.IDS,
+                )
+
+            deleted_ids: list[int] = []
+            deleted_instances: dict[int, dict[str, Any]] = {}
+            errors: list[BulkOperationError] = []
+
+            for idx, instance_id in enumerate(ids):
+                try:
+                    # Check exists
+                    self._check_instance_exists(model_name, instance_id)
+
+                    # Store for rollback
+                    deleted_instances[instance_id] = deepcopy(
+                        self._data[model_name][instance_id]
+                    )
+
+                    # Delete
+                    self._data[model_name].pop(instance_id)
+                    deleted_ids.append(instance_id)
+
+                except Exception as e:
+                    error = BulkOperationError(
+                        index=idx,
+                        item={PRIMARY_KEY_FIELD: instance_id},
+                        error=str(e),
+                    )
+                    errors.append(error)
+
+                    if not allow_partial:
+                        # Rollback all deletions
+                        for del_id, del_instance in deleted_instances.items():
+                            self._data[model_name][del_id] = del_instance
+                        raise
+
+            logger.info(f"Bulk deleted {len(deleted_ids)}/{len(ids)} {model_name}(s)")
+
+            return self._build_bulk_result(
+                BulkResponseKey.DELETED,
+                len(deleted_ids),
+                deleted_ids,
+                errors,
+                data_key=BulkResponseKey.IDS,
+            )
 
     def list(
         self,
@@ -626,3 +906,85 @@ class DataStore:
         """
         with self._lock:
             return list(self._data.keys())
+
+    # =============================================================================
+    # PRIVATE HELPERS: Bulk Operations
+    # =============================================================================
+
+    def _validate_batch_size(self, batch_size: int, max_batch_size: int | None) -> None:
+        """Validate batch size against maximum allowed.
+
+        Args:
+            batch_size: Actual batch size.
+            max_batch_size: Maximum allowed batch size (None = no limit).
+
+        Raises:
+            BatchSizeExceededError: If batch size exceeds maximum.
+        """
+        if max_batch_size and batch_size > max_batch_size:
+            raise BatchSizeExceededError(batch_size, max_batch_size)
+
+    def _build_bulk_result(
+        self,
+        operation_key: str,
+        count: int,
+        data: list[dict[str, Any]] | list[int],
+        errors: list[BulkOperationError],
+        data_key: str = BulkResponseKey.DATA,
+    ) -> dict[str, Any]:
+        """Build standardized bulk operation result.
+
+        Args:
+            operation_key: Result key (e.g., "created", "updated", "deleted").
+            count: Number of successful operations.
+            data: List of data items or IDs.
+            errors: List of errors that occurred.
+            data_key: Key for data in result (default: "data", or "ids" for delete).
+
+        Returns:
+            Standardized result dictionary.
+        """
+        result = {operation_key: count, data_key: data}
+        if errors:
+            result[BulkResponseKey.ERRORS] = [
+                {"index": e.index, "item": e.item, "error": e.error} for e in errors
+            ]
+        return result
+
+    def _check_duplicate_id(self, model_name: str, instance_id: int) -> None:
+        """Check if instance ID already exists in model.
+
+        Args:
+            model_name: Name of the model.
+            instance_id: ID to check.
+
+        Raises:
+            DuplicateInstanceError: If instance with ID already exists.
+        """
+        if instance_id in self._data[model_name]:
+            raise DuplicateInstanceError(model_name, instance_id)
+
+    def _validate_id_present(self, data: dict[str, Any]) -> None:
+        """Validate that primary key field is present in data.
+
+        Args:
+            data: Dictionary to validate.
+
+        Raises:
+            ValueError: If primary key field is missing.
+        """
+        if PRIMARY_KEY_FIELD not in data:
+            raise ValueError(f"Missing required field '{PRIMARY_KEY_FIELD}' for update")
+
+    def _check_instance_exists(self, model_name: str, instance_id: int) -> None:
+        """Check if instance exists in model.
+
+        Args:
+            model_name: Name of the model.
+            instance_id: ID to check.
+
+        Raises:
+            InstanceNotFoundError: If instance with ID does not exist.
+        """
+        if instance_id not in self._data[model_name]:
+            raise InstanceNotFoundError(model_name, instance_id)

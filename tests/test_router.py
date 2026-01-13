@@ -108,13 +108,14 @@ def test_generate_routes_returns_router(router_generator: RouterGenerator) -> No
 def test_generate_routes_creates_crud_endpoints(
     router_generator: RouterGenerator,
 ) -> None:
-    """Test that 5 CRUD routes are created per model."""
+    """Test that 8 routes are created per model (5 CRUD + 3 bulk)."""
     router = router_generator.generate_routes()
 
-    # Each model gets 5 routes: LIST, CREATE, READ, UPDATE, DELETE
-    # We have multiple models in the fixtures
+    # Each model gets 8 routes:
+    # - 5 CRUD: LIST, CREATE, READ, UPDATE, DELETE
+    # - 3 BULK: BULK_CREATE, BULK_UPDATE, BULK_DELETE
     total_models = len(router_generator.schemas)
-    expected_routes = total_models * 5
+    expected_routes = total_models * 8
 
     assert len(router.routes) == expected_routes
 

@@ -43,6 +43,7 @@ from mock_api.core.constants import (
     DEFAULT_HOST,
     DEFAULT_LIMIT,
     DEFAULT_LOG_LEVEL,
+    DEFAULT_MAX_BATCH_SIZE,
     DEFAULT_MAX_FILTERS,
     DEFAULT_MAX_SORT_FIELDS,
     DEFAULT_PAGE_SIZE,
@@ -50,10 +51,12 @@ from mock_api.core.constants import (
     DEFAULT_SEED_COUNT,
     DEFAULT_STRICT_MODE,
     ENV_VAR_PREFIX,
+    MAX_BATCH_SIZE_LIMIT,
     MAX_LIMIT,
     MAX_PAGE_SIZE,
     MAX_PORT,
     MAX_SEED_COUNT,
+    MIN_BATCH_SIZE,
     MIN_LIMIT,
     MIN_PAGE_SIZE,
     MIN_PORT,
@@ -171,6 +174,29 @@ class FilterSortConfig(BaseModel):
     model_config = {"frozen": False, "extra": "forbid"}
 
 
+class BulkOperationsConfig(BaseModel):
+    """Bulk operations configuration schema.
+
+    Attributes:
+        max_batch_size: Maximum number of items allowed in a single bulk operation.
+        allow_partial: If True, continue processing items even if some fail.
+    """
+
+    max_batch_size: int = Field(
+        default=DEFAULT_MAX_BATCH_SIZE,
+        description="Maximum number of items in a single bulk operation",
+        ge=MIN_BATCH_SIZE,
+        le=MAX_BATCH_SIZE_LIMIT,
+    )
+
+    allow_partial: bool = Field(
+        default=False,
+        description="Allow partial success in bulk operations",
+    )
+
+    model_config = {"frozen": False, "extra": "forbid"}
+
+
 class Config(BaseModel):
     """Configuration schema for mockapi-server.
 
@@ -241,6 +267,11 @@ class Config(BaseModel):
     filter_sort: FilterSortConfig = Field(
         default_factory=FilterSortConfig,
         description="Filtering and sorting configuration",
+    )
+
+    bulk_operations: BulkOperationsConfig = Field(
+        default_factory=BulkOperationsConfig,
+        description="Bulk operations configuration",
     )
 
     @field_validator("locale")

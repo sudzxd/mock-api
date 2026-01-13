@@ -106,9 +106,9 @@ def test_create_app_includes_routes(server: Server) -> None:
     """Test create_app includes all generated routes."""
     app = server.create_app()
 
-    # Each model gets 5 routes
+    # Each model gets 8 routes (5 CRUD + 3 bulk operations)
     total_models = len(server.schemas)
-    expected_routes = total_models * 5
+    expected_routes = total_models * 8
 
     # Count only API CRUD routes (exclude docs, openapi, etc)
     api_routes = [
