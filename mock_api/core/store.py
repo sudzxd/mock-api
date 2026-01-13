@@ -351,10 +351,8 @@ class DataStore:
             # Apply filters - order: custom filter_func first, then FilterSpec
             if filter_func:
                 instances = [inst for inst in instances if filter_func(inst)]
-
             if filters:
                 instances = self._apply_filters(instances, filters)
-
             # Apply sorting before pagination
             if sort_by:
                 instances = self._apply_sorting(instances, sort_by)
