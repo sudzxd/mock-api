@@ -18,6 +18,9 @@ jobs:
   reset-benchmarks:
     name: Reset benchmark baseline
     runs-on: ubuntu-latest
+    permissions:
+      actions: write
+      contents: read
 
     steps:
       - uses: actions/checkout@v4
