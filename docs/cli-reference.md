@@ -23,14 +23,14 @@ mockapi-server init [OPTIONS]
 
 #### Options
 
-| Option           | Type   | Default       | Description                              |
-| ---------------- | ------ | ------------- | ---------------------------------------- |
+| Option           | Type   | Default             | Description                              |
+| ---------------- | ------ | ------------------- | ---------------------------------------- |
 | `--project-name` | TEXT   | `my-mockapi-server` | Project name                             |
-| `--template`     | CHOICE | -             | Template: basic, blog, ecommerce, custom |
-| `--models-file`  | TEXT   | `models.py`   | Models file path                         |
-| `--seed-count`   | INT    | `10`          | Initial seed data count (1-10000)        |
-| `--port`         | INT    | `3000`        | Server port (1024-65535)                 |
-| `--force`        | FLAG   | False         | Overwrite existing files                 |
+| `--template`     | CHOICE | -                   | Template: basic, blog, ecommerce, custom |
+| `--models-file`  | TEXT   | `models.py`         | Models file path                         |
+| `--seed-count`   | INT    | `10`                | Initial seed data count (1-10000)        |
+| `--port`         | INT    | `3000`              | Server port (1024-65535)                 |
+| `--force`        | FLAG   | False               | Overwrite existing files                 |
 
 #### Examples
 
@@ -273,7 +273,7 @@ Verbose:
 
 Create `mockapi-server.yml` to avoid repeating options:
 
-```yaml
+````yaml
 # Server settings
 host: 0.0.0.0
 port: 3000
@@ -291,15 +291,6 @@ cors_origins:
   - "*"
   - "http://localhost:3001"
 
-# Pagination
-pagination:
-  strategy: page # page or offset
-  default_page_size: 20
-  default_limit: 20
-  max_page_size: 100
-  max_limit: 100
-```
-
 CLI options override config file values:
 
 ```bash
@@ -308,7 +299,7 @@ mockapi-server serve --models models.py --config mockapi-server.yml
 
 # Port from CLI: 8000 (overrides config)
 mockapi-server serve --models models.py --config mockapi-server.yml --port 8000
-```
+````
 
 ---
 

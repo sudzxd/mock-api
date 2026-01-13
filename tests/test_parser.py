@@ -2,9 +2,16 @@
 
 from __future__ import annotations
 
+# =============================================================================
+# IMPORTS
+# =============================================================================
+# Standard library
 from pathlib import Path
 
+# Third-party
 import pytest
+
+# Project/Local
 from mock_api.core.exceptions import SchemaFileNotFoundError, SchemaValidationError
 from mock_api.core.parser import SchemaParser
 

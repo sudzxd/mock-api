@@ -109,6 +109,51 @@ curl "http://localhost:3000/api/v1/users?offset=0&limit=10"
 
 Both return `items` array with `pagination` metadata including `has_next` and `has_prev`.
 
+## Filtering and Sorting
+
+**Filter by field value:**
+
+```bash
+# Equality
+curl "http://localhost:3000/api/v1/users?status=active"
+
+# Comparison operators
+curl "http://localhost:3000/api/v1/users?age__gte=18"
+curl "http://localhost:3000/api/v1/posts?views__gt=100"
+
+# String matching (case-insensitive)
+curl "http://localhost:3000/api/v1/users?name__contains=smith"
+curl "http://localhost:3000/api/v1/users?email__endswith=@example.com"
+
+# IN operator
+curl "http://localhost:3000/api/v1/posts?id__in=1,2,3,4,5"
+
+# Null values
+curl "http://localhost:3000/api/v1/users?bio=null"
+```
+
+**Sort results:**
+
+```bash
+# Ascending
+curl "http://localhost:3000/api/v1/users?sort=name"
+
+# Descending (prefix with -)
+curl "http://localhost:3000/api/v1/posts?sort=-created_at"
+
+# Multiple fields
+curl "http://localhost:3000/api/v1/users?sort=-created_at,name"
+```
+
+**Combine features:**
+
+```bash
+# Filter + Sort + Paginate
+curl "http://localhost:3000/api/v1/posts?author_id=5&published=true&sort=-views&page=1&page_size=10"
+```
+
+Available operators: `eq` (default), `gt`, `gte`, `lt`, `lte`, `contains`, `startswith`, `endswith`, `in`
+
 ## Frontend Integration
 
 Using mock API with React/Vue/etc.

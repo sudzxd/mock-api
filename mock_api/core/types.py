@@ -146,3 +146,36 @@ class QueryResult(BaseModel):
 
     items: list[dict[str, Any]]
     pagination: PaginationInfo
+
+
+# =============================================================================
+# FILTER AND SORT TYPES
+# =============================================================================
+
+
+@dataclass
+class FilterSpec:
+    """Specification for a single filter condition.
+
+    Attributes:
+        field: Field name to filter on (e.g., "age", "name").
+        operator: Filter operator enum value.
+        value: Value to compare against (type-coerced).
+    """
+
+    field: str
+    operator: str  # FilterOperator enum value (stored as str for serialization)
+    value: Any
+
+
+@dataclass
+class SortSpec:
+    """Specification for sorting.
+
+    Attributes:
+        field: Field name to sort by.
+        direction: Sort direction ("asc" or "desc").
+    """
+
+    field: str
+    direction: str

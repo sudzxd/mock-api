@@ -423,18 +423,121 @@ DELETE /api/v1/users/{id}
 
 ### Filtering
 
-Filter results by field values:
+Apply filters to list endpoints using query parameters with optional operator suffixes.
+
+#### Equality Filters
+
+Filter by exact field values:
 
 ```http
+GET /api/v1/users?status=active
 GET /api/v1/posts?author_id=5
-GET /api/v1/users?active=true
+GET /api/v1/users?age=25
 ```
 
-Multiple filters are AND'ed:
+#### Comparison Operators
+
+Use operator suffixes for numeric/datetime comparisons:
+
+- `__gte`: Greater than or equal (>=)
+- `__gt`: Greater than (>)
+- `__lte`: Less than or equal (<=)
+- `__lt`: Less than (<)
 
 ```http
-GET /api/v1/posts?author_id=5&published=true
+GET /api/v1/users?age__gte=18
+GET /api/v1/posts?views__gt=100
+GET /api/v1/users?created_at__lt=2024-01-01
 ```
+
+#### String Operators
+
+Case-insensitive string matching:
+
+- `__contains`: Substring match
+- `__startswith`: Prefix match
+- `__endswith`: Suffix match
+
+```http
+GET /api/v1/users?name__contains=smith
+GET /api/v1/users?email__endswith=@example.com
+GET /api/v1/posts?title__startswith=How
+```
+
+#### IN Operator
+
+Match against multiple values (comma-separated):
+
+```http
+GET /api/v1/users?status__in=active,pending
+GET /api/v1/posts?id__in=1,2,3,4,5
+```
+
+#### Null Filtering
+
+Match null/None values:
+
+```http
+GET /api/v1/users?bio=null
+GET /api/v1/posts?deleted_at=null
+```
+
+#### Multiple Filters (AND Logic)
+
+All filters are combined with AND logic:
+
+```http
+GET /api/v1/users?age__gte=18&status=active&city=NYC
+GET /api/v1/posts?author_id=5&published=true&views__gt=50
+```
+
+#### Configuration Limits
+
+Default limits (configurable in `mockapi-server.yml`):
+
+- Maximum filters per request: 10
+- Invalid field names return 400 error
+- Invalid operators return 400 error
+- Invalid value types return 400 error
+
+### Sorting
+
+Sort results using the `sort` parameter.
+
+#### Single Field
+
+Ascending (default):
+
+```http
+GET /api/v1/users?sort=name
+GET /api/v1/posts?sort=created_at
+```
+
+Descending (prefix with `-`):
+
+```http
+GET /api/v1/users?sort=-age
+GET /api/v1/posts?sort=-created_at
+```
+
+#### Multiple Fields
+
+Comma-separated for multi-level sorting:
+
+```http
+GET /api/v1/users?sort=-created_at,name
+GET /api/v1/posts?sort=-views,title
+```
+
+Second field is used as tiebreaker when first field values are equal.
+
+#### Configuration Limits
+
+Default limits (configurable in `mockapi-server.yml`):
+
+- Maximum sort fields per request: 5
+- Invalid field names return 400 error
+- Null values sorted to end
 
 ### Pagination
 
@@ -458,12 +561,31 @@ Both return:
   "pagination": {
     "total_items": 100,
     "has_next": true,
-    "has_prev": false
+    "has_prev": false,
+    // Page-based fields (null if using offset)
+    "page": 1,
+    "page_size": 20,
+    "total_pages": 5,
+    // Offset-based fields (null if using page)
+    "offset": null,
+    "limit": null
   }
 }
 ```
 
 Cannot mix strategies in one request. Configure defaults in `mockapi-server.yml`.
+
+### Combining Features
+
+Filtering, sorting, and pagination work together:
+
+```http
+GET /api/v1/posts?author_id=5&published=true&views__gte=50&sort=-created_at&page=1&page_size=20
+```
+
+Execution order: Filter → Sort → Paginate
+
+This ensures sorted results before pagination for correct page boundaries.
 
 ---
 
