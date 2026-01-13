@@ -10,7 +10,7 @@ from __future__ import annotations
 # IMPORTS
 # =============================================================================
 # Standard library
-from enum import StrEnum
+from enum import IntEnum, StrEnum
 
 # =============================================================================
 # ENUMS
@@ -61,7 +61,28 @@ class ConfigFormat(StrEnum):
     JSON = "json"
 
 
-class HTTPStatus:
+class FilterOperator(StrEnum):
+    """Supported filter operators for query parameters."""
+
+    EQ = "eq"
+    GT = "gt"
+    GTE = "gte"
+    LT = "lt"
+    LTE = "lte"
+    CONTAINS = "contains"
+    STARTSWITH = "startswith"
+    ENDSWITH = "endswith"
+    IN = "in"
+
+
+class SortDirection(StrEnum):
+    """Sort direction options."""
+
+    ASC = "asc"
+    DESC = "desc"
+
+
+class HTTPStatus(IntEnum):
     """HTTP status codes for API responses."""
 
     # Success codes
@@ -254,6 +275,20 @@ MIN_LIMIT = 1
 # Query defaults
 DEFAULT_PAGE_NUMBER = 1
 
+# Filtering and sorting defaults
+DEFAULT_MAX_FILTERS = 10
+DEFAULT_MAX_SORT_FIELDS = 5
+
+# Filtering and sorting delimiters
+FILTER_OPERATOR_DELIMITER = "__"
+SORT_DESC_PREFIX = "-"
+SORT_FIELD_DELIMITER = ","
+IN_OPERATOR_DELIMITER = ","
+
+# Boolean string coercion values
+BOOLEAN_TRUE_VALUES = ("true", "1", "yes")
+BOOLEAN_FALSE_VALUES = ("false", "0", "no")
+
 # =============================================================================
 # ROUTER CONSTANTS
 # =============================================================================
@@ -277,6 +312,7 @@ class QueryParam(StrEnum):
     PAGE_SIZE = "page_size"
     OFFSET = "offset"
     LIMIT = "limit"
+    SORT = "sort"
 
 
 class ResponseKey(StrEnum):
@@ -284,10 +320,17 @@ class ResponseKey(StrEnum):
 
     ITEMS = "items"
     PAGINATION = "pagination"
+    # Common pagination fields
+    TOTAL_ITEMS = "total_items"
+    HAS_NEXT = "has_next"
+    HAS_PREV = "has_prev"
+    # Page-based pagination fields
     PAGE = "page"
     PAGE_SIZE = "page_size"
-    TOTAL_ITEMS = "total_items"
     TOTAL_PAGES = "total_pages"
+    # Offset-based pagination fields
+    OFFSET = "offset"
+    LIMIT = "limit"
 
 
 class ModelName(StrEnum):

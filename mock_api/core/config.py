@@ -43,6 +43,8 @@ from mock_api.core.constants import (
     DEFAULT_HOST,
     DEFAULT_LIMIT,
     DEFAULT_LOG_LEVEL,
+    DEFAULT_MAX_FILTERS,
+    DEFAULT_MAX_SORT_FIELDS,
     DEFAULT_PAGE_SIZE,
     DEFAULT_PORT,
     DEFAULT_SEED_COUNT,
@@ -140,6 +142,35 @@ class PaginationConfig(BaseModel):
     model_config = {"frozen": False, "extra": "forbid"}
 
 
+class FilterSortConfig(BaseModel):
+    """Filtering and sorting configuration schema.
+
+    Attributes:
+        max_filters: Maximum number of filters allowed in a single query.
+        max_sort_fields: Maximum number of sort fields allowed in a single query.
+        case_sensitive: Whether string filter operators are case-sensitive.
+    """
+
+    max_filters: int = Field(
+        default=DEFAULT_MAX_FILTERS,
+        description="Maximum number of filters allowed in a single query",
+        ge=1,
+    )
+
+    max_sort_fields: int = Field(
+        default=DEFAULT_MAX_SORT_FIELDS,
+        description="Maximum number of sort fields allowed in a single query",
+        ge=1,
+    )
+
+    case_sensitive: bool = Field(
+        default=False,
+        description="String filter operators are case-sensitive",
+    )
+
+    model_config = {"frozen": False, "extra": "forbid"}
+
+
 class Config(BaseModel):
     """Configuration schema for mockapi-server.
 
@@ -205,6 +236,11 @@ class Config(BaseModel):
     pagination: PaginationConfig = Field(
         default_factory=PaginationConfig,
         description="Pagination configuration",
+    )
+
+    filter_sort: FilterSortConfig = Field(
+        default_factory=FilterSortConfig,
+        description="Filtering and sorting configuration",
     )
 
     @field_validator("locale")

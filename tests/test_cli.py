@@ -2,11 +2,18 @@
 
 from __future__ import annotations
 
+# =============================================================================
+# IMPORTS
+# =============================================================================
+# Standard library
 import json
 from pathlib import Path
 
+# Third-party
 import pytest
 from click.testing import CliRunner
+
+# Project/Local
 from mock_api.cli.main import cli
 
 # =============================================================================

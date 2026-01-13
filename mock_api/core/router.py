@@ -25,26 +25,36 @@ from typing import Any, cast
 
 # Third-party
 from fastapi import APIRouter as FastAPIRouter
-from fastapi import HTTPException, Query
+from fastapi import HTTPException, Query, Request
 from pydantic import BaseModel, ValidationError, create_model
+from starlette.datastructures import QueryParams
 
 # Project/local
 from ..utils.logger import get_logger
 from .config import Config
 from .constants import (
     API_VERSION_PREFIX,
+    BOOLEAN_FALSE_VALUES,
+    BOOLEAN_TRUE_VALUES,
+    FILTER_OPERATOR_DELIMITER,
+    IN_OPERATOR_DELIMITER,
     PRIMARY_KEY_FIELD,
+    SORT_DESC_PREFIX,
+    SORT_FIELD_DELIMITER,
     URL_ID_PATH_SEGMENT,
     URL_PATH_SEPARATOR,
     URL_PLURAL_SUFFIX,
+    FilterOperator,
     HTTPStatus,
     ModelName,
+    QueryParam,
     ResponseKey,
     RouteDescription,
+    SortDirection,
 )
 from .exceptions import InstanceNotFoundError
 from .store import DataStore
-from .types import ModelSchema, QueryResult
+from .types import FieldSchema, FilterSpec, ModelSchema, QueryResult, SortSpec
 
 # =============================================================================
 # TYPES & CONSTANTS
@@ -252,11 +262,18 @@ class RouterGenerator:
         Returns:
             Paginated response model.
         """
-        pagination_fields: dict[str, tuple[type, Any]] = {
-            ResponseKey.PAGE: (int, ...),
-            ResponseKey.PAGE_SIZE: (int, ...),
+        pagination_fields: dict[str, tuple[Any, Any]] = {
+            # Common fields (always present)
             ResponseKey.TOTAL_ITEMS: (int, ...),
-            ResponseKey.TOTAL_PAGES: (int, ...),
+            ResponseKey.HAS_NEXT: (bool, ...),
+            ResponseKey.HAS_PREV: (bool, ...),
+            # Page-based fields (optional - None if using offset strategy)
+            ResponseKey.PAGE: (int | None, None),
+            ResponseKey.PAGE_SIZE: (int | None, None),
+            ResponseKey.TOTAL_PAGES: (int | None, None),
+            # Offset-based fields (optional - None if using page strategy)
+            ResponseKey.OFFSET: (int | None, None),
+            ResponseKey.LIMIT: (int | None, None),
         }
 
         pagination_model_raw = create_model(  # pyright: ignore[reportCallIssue,reportUnknownVariableType]
@@ -295,7 +312,7 @@ class RouterGenerator:
         self._add_delete_route(model_name, base_path, tag)
 
     def _add_list_route(self, model_name: str, base_path: str, tag: str) -> None:
-        """Add LIST route (GET /models) with dual pagination support."""
+        """Add LIST route (GET /models) with filtering, sorting, and pagination."""
         response_model = self._registry.get_list_response_model(model_name)
         pagination_config = self._config.pagination
 
@@ -304,10 +321,12 @@ class RouterGenerator:
             response_model=response_model,
             tags=[tag],
             summary=f"List {model_name}s",
-            description="Supports both page-based (?page=1&page_size=20) and "
-            "offset-based (?offset=0&limit=10) pagination.",
+            description="Supports filtering (?field__operator=value), "
+            "sorting (?sort=field,-field2), and dual pagination "
+            "(?page=1&page_size=20 or ?offset=0&limit=10).",
         )
         async def list_handler(
+            request: Request,
             # Page-based params
             page: int | None = Query(
                 None,
@@ -333,12 +352,24 @@ class RouterGenerator:
                 description="Maximum items to return for offset-based pagination",
             ),
         ) -> dict[str, Any]:
+            # Parse filters and sort from query params
+            filters = self._parse_filter_params(
+                request.query_params, model_name, self.schemas[model_name]
+            )
+            sort_by = self._parse_sort_param(
+                request.query_params.get(QueryParam.SORT),
+                model_name,
+                self.schemas[model_name],
+            )
+
             result: QueryResult = self.store.list(
                 model_name,
                 page=page,
                 page_size=page_size,
                 offset=offset,
                 limit=limit,
+                filters=filters,
+                sort_by=sort_by,
             )
             return result.model_dump()
 
@@ -443,3 +474,347 @@ class RouterGenerator:
                 raise HTTPException(
                     status_code=HTTPStatus.NOT_FOUND, detail=RouteDescription.NOT_FOUND
                 )
+
+    # =============================================================================
+    # FILTER PARSING
+    # =============================================================================
+
+    def _parse_filter_params(
+        self,
+        query_params: QueryParams,
+        model_name: str,
+        schema: ModelSchema,
+    ) -> list[FilterSpec]:
+        """Parse filter query parameters into FilterSpec objects.
+
+        Args:
+            query_params: Raw query parameters from request.
+            model_name: Name of the model being queried.
+            schema: Model schema for field validation.
+
+        Returns:
+            List of filter specifications.
+
+        Raises:
+            HTTPException: If too many filters or validation fails.
+        """
+        filters: list[FilterSpec] = []
+        reserved_params = {
+            QueryParam.PAGE,
+            QueryParam.PAGE_SIZE,
+            QueryParam.OFFSET,
+            QueryParam.LIMIT,
+            QueryParam.SORT,
+        }
+
+        for param_name, param_value in query_params.items():
+            if param_name in reserved_params:
+                continue
+
+            filter_spec = self._parse_single_filter_param(
+                param_name, param_value, model_name, schema
+            )
+            filters.append(filter_spec)
+
+        # Check max filters limit
+        max_filters = self._config.filter_sort.max_filters
+        if len(filters) > max_filters:
+            raise HTTPException(
+                status_code=HTTPStatus.BAD_REQUEST,
+                detail=f"Too many filters. Maximum allowed: {max_filters}",
+            )
+
+        return filters
+
+    def _parse_single_filter_param(
+        self, param_name: str, param_value: str, model_name: str, schema: ModelSchema
+    ) -> FilterSpec:
+        """Parse a single filter parameter into FilterSpec.
+
+        Args:
+            param_name: Query parameter name (e.g., "age__gte" or "name").
+            param_value: Query parameter value.
+            model_name: Name of the model being queried.
+            schema: Model schema for field validation.
+
+        Returns:
+            FilterSpec object.
+
+        Raises:
+            HTTPException: If field, operator, or value is invalid.
+        """
+        # Parse field__operator or field (implicit eq)
+        if FILTER_OPERATOR_DELIMITER in param_name:
+            field_name, operator_str = param_name.split(FILTER_OPERATOR_DELIMITER, 1)
+        else:
+            field_name, operator_str = param_name, FilterOperator.EQ
+
+        # Validate and get field schema
+        field_schema = self._validate_filter_field(field_name, model_name, schema)
+
+        # Validate and get operator enum
+        operator = self._validate_filter_operator(operator_str)
+
+        # Coerce value based on field type
+        try:
+            coerced_value = self._coerce_filter_value(
+                param_value, field_schema, operator
+            )
+        except ValueError as e:
+            raise HTTPException(
+                status_code=HTTPStatus.BAD_REQUEST,
+                detail=f"Invalid value for {field_name}: {str(e)}",
+            ) from e
+
+        return FilterSpec(field=field_name, operator=operator, value=coerced_value)
+
+    def _validate_filter_field(
+        self, field_name: str, model_name: str, schema: ModelSchema
+    ) -> FieldSchema:
+        """Validate filter field exists in schema.
+
+        Args:
+            field_name: Name of the field to validate.
+            model_name: Name of the model being queried.
+            schema: Model schema.
+
+        Returns:
+            FieldSchema for the validated field.
+
+        Raises:
+            HTTPException: If field doesn't exist.
+        """
+        field_map = {f.name: f for f in schema.fields}
+        if field_name not in field_map:
+            raise HTTPException(
+                status_code=HTTPStatus.BAD_REQUEST,
+                detail=f"Invalid filter field '{field_name}' for {model_name}. "
+                f"Available fields: {', '.join(field_map.keys())}",
+            )
+        return field_map[field_name]
+
+    def _validate_filter_operator(self, operator_str: str) -> FilterOperator:
+        """Validate filter operator is supported.
+
+        Args:
+            operator_str: Operator string (e.g., "gte", "contains").
+
+        Returns:
+            FilterOperator enum value.
+
+        Raises:
+            HTTPException: If operator is invalid.
+        """
+        try:
+            return FilterOperator(operator_str)
+        except ValueError as e:
+            valid_ops = ", ".join([op.value for op in FilterOperator])
+            raise HTTPException(
+                status_code=HTTPStatus.BAD_REQUEST,
+                detail=f"Invalid filter operator '{operator_str}'. "
+                f"Valid operators: {valid_ops}",
+            ) from e
+
+    def _coerce_filter_value(
+        self, value: str, field_schema: FieldSchema, operator: FilterOperator
+    ) -> Any:
+        """Coerce string query parameter to field type.
+
+        Args:
+            value: Raw string value from query parameter.
+            field_schema: Schema of the field being filtered.
+            operator: Filter operator being used.
+
+        Returns:
+            Type-coerced value.
+
+        Raises:
+            ValueError: If coercion fails.
+        """
+        # Handle null explicitly
+        if value.lower() == "null":
+            return None
+
+        # Handle IN operator - split comma-separated values
+        if operator == FilterOperator.IN:
+            value_list = [v.strip() for v in value.split(IN_OPERATOR_DELIMITER)]
+            return [self._coerce_single_value(v, field_schema) for v in value_list]
+
+        return self._coerce_single_value(value, field_schema)
+
+    def _coerce_single_value(self, value: str, field_schema: FieldSchema) -> Any:
+        """Coerce a single value based on field type.
+
+        Args:
+            value: Raw string value.
+            field_schema: Schema of the field.
+
+        Returns:
+            Type-coerced value.
+
+        Raises:
+            ValueError: If coercion fails.
+        """
+        field_type = field_schema.type
+
+        # String - passthrough
+        if field_type is str:
+            return value
+
+        # Boolean
+        if field_type is bool:
+            if value.lower() in BOOLEAN_TRUE_VALUES:
+                return True
+            if value.lower() in BOOLEAN_FALSE_VALUES:
+                return False
+            raise ValueError(f"Cannot convert '{value}' to bool")
+
+        # Integer
+        if field_type is int:
+            return int(value)
+
+        # Float
+        if field_type is float:
+            return float(value)
+
+        # Datetime
+        if field_type.__name__ == "datetime":
+            from datetime import datetime
+
+            return datetime.fromisoformat(value)
+
+        # Date
+        if field_type.__name__ == "date":
+            from datetime import date
+
+            return date.fromisoformat(value)
+
+        # Enum
+        if field_schema.is_enum:
+            # For int-based enums (e.g., Priority(int, Enum)), convert to int
+            # For str-based enums (e.g., Status(str, Enum)), keep as string
+            # Note: field_schema.enum_values contains actual values
+            enum_type = field_type
+            if issubclass(enum_type, int) and not issubclass(enum_type, bool):
+                # Int-based enum - convert string to int
+                try:
+                    int_value = int(value)
+                except ValueError:
+                    valid_values = ", ".join(str(v) for v in field_schema.enum_values)
+                    raise ValueError(
+                        f"Invalid value '{value}' for int-based enum. "
+                        f"Valid values: {valid_values}"
+                    ) from None
+                # Validate the int is a valid enum value
+                if int_value not in field_schema.enum_values:
+                    valid_values = ", ".join(str(v) for v in field_schema.enum_values)
+                    raise ValueError(
+                        f"Invalid enum value '{int_value}'. "
+                        f"Valid values: {valid_values}"
+                    )
+                return int_value
+
+            # String-based enum or other - keep as string
+            enum_values_str = [str(v) for v in field_schema.enum_values]
+            if value not in enum_values_str:
+                raise ValueError(
+                    f"Invalid enum value '{value}'. "
+                    f"Valid values: {', '.join(enum_values_str)}"
+                )
+            return value
+
+        # Default - try direct conversion
+        return field_type(value)
+
+    # =============================================================================
+    # SORT PARSING
+    # =============================================================================
+
+    def _parse_sort_param(
+        self,
+        sort_value: str | None,
+        model_name: str,
+        schema: ModelSchema,
+    ) -> list[SortSpec]:
+        """Parse sort query parameter into SortSpec objects.
+
+        Args:
+            sort_value: Sort parameter value (e.g., "-created_at,name").
+            model_name: Name of the model being queried.
+            schema: Model schema for field validation.
+
+        Returns:
+            List of sort specifications.
+
+        Raises:
+            HTTPException: If too many sort fields or validation fails.
+        """
+        if not sort_value:
+            return []
+
+        # Parse comma-separated fields
+        field_specs = [f.strip() for f in sort_value.split(SORT_FIELD_DELIMITER)]
+        sort_specs = [
+            self._parse_single_sort_field(field_spec, model_name, schema)
+            for field_spec in field_specs
+        ]
+
+        # Check max sort fields limit
+        max_sort_fields = self._config.filter_sort.max_sort_fields
+        if len(sort_specs) > max_sort_fields:
+            raise HTTPException(
+                status_code=HTTPStatus.BAD_REQUEST,
+                detail=f"Too many sort fields. Maximum allowed: {max_sort_fields}",
+            )
+
+        return sort_specs
+
+    def _parse_single_sort_field(
+        self, field_spec: str, model_name: str, schema: ModelSchema
+    ) -> SortSpec:
+        """Parse a single sort field specification.
+
+        Args:
+            field_spec: Field specification (e.g., "-created_at" or "name").
+            model_name: Name of the model being queried.
+            schema: Model schema for field validation.
+
+        Returns:
+            SortSpec object.
+
+        Raises:
+            HTTPException: If field is invalid.
+        """
+        # Check for descending prefix
+        if field_spec.startswith(SORT_DESC_PREFIX):
+            direction = SortDirection.DESC
+            field_name = field_spec[1:]
+        else:
+            direction = SortDirection.ASC
+            field_name = field_spec
+
+        # Validate field exists
+        self._validate_sort_field(field_name, model_name, schema)
+
+        return SortSpec(field=field_name, direction=direction)
+
+    def _validate_sort_field(
+        self, field_name: str, model_name: str, schema: ModelSchema
+    ) -> None:
+        """Validate sort field exists in schema.
+
+        Args:
+            field_name: Name of the field to validate.
+            model_name: Name of the model being queried.
+            schema: Model schema.
+
+        Raises:
+            HTTPException: If field doesn't exist.
+        """
+        field_names = [f.name for f in schema.fields]
+        if field_name not in field_names:
+            raise HTTPException(
+                status_code=HTTPStatus.BAD_REQUEST,
+                detail=f"Invalid sort field '{field_name}' for {model_name}. "
+                f"Available fields: {', '.join(field_names)}",
+            )

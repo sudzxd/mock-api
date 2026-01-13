@@ -2,11 +2,18 @@
 
 from __future__ import annotations
 
+# =============================================================================
+# IMPORTS
+# =============================================================================
+# Standard library
 from pathlib import Path
 
+# Third-party
 import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
+
+# Project/Local
 from mock_api.core.constants import PRIMARY_KEY_FIELD, HTTPStatus
 from mock_api.core.parser import SchemaParser
 from mock_api.core.router import RouterGenerator
@@ -569,3 +576,142 @@ def test_routes_use_correct_http_methods(app: FastAPI) -> None:
     assert "GET" in route_methods["/api/v1/contacts/{instance_id}"]
     assert "PUT" in route_methods["/api/v1/contacts/{instance_id}"]
     assert "DELETE" in route_methods["/api/v1/contacts/{instance_id}"]
+
+
+# =============================================================================
+# TESTS: Filtering Integration
+# =============================================================================
+
+
+def test_list_with_equality_filter_query_param(app: FastAPI, store: DataStore) -> None:
+    """Test list with equality filter via query parameter."""
+    client = TestClient(app)
+
+    products = [
+        {"id": 1, "name": "Widget", "priority": 1, "status": "active"},
+        {"id": 2, "name": "Gadget", "priority": 2, "status": "active"},
+        {"id": 3, "name": "Gizmo", "priority": 1, "status": "inactive"},
+    ]
+    store.load({"Product": products})
+
+    response = client.get("/api/v1/products?status=active")
+    assert response.status_code == HTTPStatus.OK
+    data = response.json()
+    assert len(data["items"]) == 2
+    assert all(item["status"] == "active" for item in data["items"])
+
+
+def test_list_with_comparison_filter_gte(app: FastAPI, store: DataStore) -> None:
+    """Test list with gte comparison filter."""
+    client = TestClient(app)
+
+    products = [
+        {"id": 1, "name": "Widget", "priority": 1, "status": "active"},
+        {"id": 2, "name": "Gadget", "priority": 2, "status": "active"},
+        {"id": 3, "name": "Gizmo", "priority": 3, "status": "inactive"},
+    ]
+    store.load({"Product": products})
+
+    response = client.get("/api/v1/products?priority__gte=2")
+    assert response.status_code == HTTPStatus.OK
+    data = response.json()
+    assert len(data["items"]) == 2
+    assert all(item["priority"] >= 2 for item in data["items"])
+
+
+def test_list_filter_invalid_field_returns_400(app: FastAPI, store: DataStore) -> None:
+    """Test that invalid filter field returns 400 error."""
+    client = TestClient(app)
+
+    products = [{"id": 1, "name": "Widget", "priority": 1, "status": "active"}]
+    store.load({"Product": products})
+
+    response = client.get("/api/v1/products?invalid_field=test")
+    assert response.status_code == HTTPStatus.BAD_REQUEST
+    assert "invalid_field" in response.json()["detail"].lower()
+
+
+# =============================================================================
+# TESTS: Sorting Integration
+# =============================================================================
+
+
+def test_list_with_sort_ascending(app: FastAPI, store: DataStore) -> None:
+    """Test list with ascending sort."""
+    client = TestClient(app)
+
+    products = [
+        {"id": 1, "name": "Zebra", "priority": 1, "status": "active"},
+        {"id": 2, "name": "Apple", "priority": 2, "status": "active"},
+        {"id": 3, "name": "Mango", "priority": 3, "status": "inactive"},
+    ]
+    store.load({"Product": products})
+
+    response = client.get("/api/v1/products?sort=name")
+    assert response.status_code == HTTPStatus.OK
+    data = response.json()
+    names = [item["name"] for item in data["items"]]
+    assert names == ["Apple", "Mango", "Zebra"]
+
+
+def test_list_with_sort_descending(app: FastAPI, store: DataStore) -> None:
+    """Test list with descending sort."""
+    client = TestClient(app)
+
+    products = [
+        {"id": 1, "name": "Widget", "priority": 1, "status": "active"},
+        {"id": 2, "name": "Gadget", "priority": 2, "status": "active"},
+        {"id": 3, "name": "Gizmo", "priority": 3, "status": "inactive"},
+    ]
+    store.load({"Product": products})
+
+    response = client.get("/api/v1/products?sort=-priority")
+    assert response.status_code == HTTPStatus.OK
+    data = response.json()
+    priorities = [item["priority"] for item in data["items"]]
+    assert priorities == [3, 2, 1]
+
+
+def test_list_sort_invalid_field_returns_400(app: FastAPI, store: DataStore) -> None:
+    """Test that invalid sort field returns 400 error."""
+    client = TestClient(app)
+
+    products = [{"id": 1, "name": "Widget", "priority": 1, "status": "active"}]
+    store.load({"Product": products})
+
+    response = client.get("/api/v1/products?sort=invalid_field")
+    assert response.status_code == HTTPStatus.BAD_REQUEST
+    assert "invalid_field" in response.json()["detail"].lower()
+
+
+# =============================================================================
+# TESTS: Combined Filtering, Sorting, and Pagination
+# =============================================================================
+
+
+def test_list_with_filter_sort_and_page_pagination(
+    app: FastAPI, store: DataStore
+) -> None:
+    """Test list with filter, sort, and page-based pagination."""
+    client = TestClient(app)
+
+    products = [
+        {"id": 1, "name": "Widget", "priority": 1, "status": "active"},
+        {"id": 2, "name": "Gadget", "priority": 2, "status": "active"},
+        {"id": 3, "name": "Gizmo", "priority": 3, "status": "active"},
+        {"id": 4, "name": "Thing", "priority": 1, "status": "inactive"},
+    ]
+    store.load({"Product": products})
+
+    response = client.get(
+        "/api/v1/products?status=active&sort=-priority&page=1&page_size=2"
+    )
+    assert response.status_code == HTTPStatus.OK
+    data = response.json()
+
+    assert len(data["items"]) == 2
+    assert data["items"][0]["priority"] == 3  # Gizmo
+    assert data["items"][1]["priority"] == 2  # Gadget
+    assert data["pagination"]["total_items"] == 3
+    assert data["pagination"]["total_pages"] == 2
+    assert data["pagination"]["has_next"] is True

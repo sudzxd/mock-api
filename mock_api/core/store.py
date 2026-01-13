@@ -35,9 +35,11 @@ from .constants import (
     MIN_LIMIT,
     MIN_PAGE_SIZE,
     PRIMARY_KEY_FIELD,
+    FilterOperator,
+    SortDirection,
 )
 from .exceptions import DuplicateInstanceError, InstanceNotFoundError, StoreError
-from .types import PaginationInfo, PaginationParams, QueryResult
+from .types import FilterSpec, PaginationInfo, PaginationParams, QueryResult, SortSpec
 
 # =============================================================================
 # TYPES & CONSTANTS
@@ -81,6 +83,19 @@ class DataStore:
         >>> len(result.items)
         1
     """
+
+    # Filter operator functions - defined once at class level
+    _FILTER_OPERATORS: dict[FilterOperator, Callable[[Any, Any], bool]] = {
+        FilterOperator.EQ: lambda fv, v: fv == v,
+        FilterOperator.GT: lambda fv, v: fv > v,
+        FilterOperator.GTE: lambda fv, v: fv >= v,
+        FilterOperator.LT: lambda fv, v: fv < v,
+        FilterOperator.LTE: lambda fv, v: fv <= v,
+        FilterOperator.CONTAINS: lambda fv, v: v.lower() in str(fv).lower(),
+        FilterOperator.STARTSWITH: lambda fv, v: str(fv).lower().startswith(v.lower()),
+        FilterOperator.ENDSWITH: lambda fv, v: str(fv).lower().endswith(v.lower()),
+        FilterOperator.IN: lambda fv, v: fv in v,
+    }
 
     def __init__(self) -> None:
         """Initialize an empty data store with optimized indices."""
@@ -284,9 +299,11 @@ class DataStore:
         page_size: int | None = None,
         offset: int | None = None,
         limit: int | None = None,
+        filters: list[FilterSpec] | None = None,
+        sort_by: list[SortSpec] | None = None,
         filter_func: FilterFunc | None = None,
     ) -> QueryResult:
-        """List instances with pagination and optional filtering.
+        """List instances with pagination, filtering, and sorting.
 
         Supports both page-based and offset-based pagination. Strategy is
         auto-detected based on which parameters are provided.
@@ -297,7 +314,9 @@ class DataStore:
             page_size: Number of items per page.
             offset: Starting offset (0-indexed) for offset-based pagination.
             limit: Maximum items to return.
-            filter_func: Optional function to filter instances.
+            filters: Optional list of filter specifications (AND logic).
+            sort_by: Optional list of sort specifications.
+            filter_func: Optional function to filter instances (backward compatibility).
 
         Returns:
             QueryResult with items and pagination info.
@@ -306,15 +325,18 @@ class DataStore:
             StoreError: If pagination parameters are invalid or conflicting.
 
         Time Complexity:
-        - Without filter: O(k) where k is page size/limit
+        - Without filter/sort: O(k) where k is page size/limit
         - With filter: O(n) where n is total instances
+        - With sort: O(n log n) where n is filtered instances
 
         Example:
-            # Page-based
-            >>> result = store.list("User", page=1, page_size=10)
+            # Page-based with filtering
+            >>> result = store.list("User", page=1, page_size=10,
+            ...     filters=[FilterSpec(field="age", operator="gte", value=18)])
 
-            # Offset-based
-            >>> result = store.list("User", offset=0, limit=10)
+            # Offset-based with sorting
+            >>> result = store.list("User", offset=0, limit=10,
+            ...     sort_by=[SortSpec(field="created_at", direction="desc")])
         """
         # Detect strategy and validate parameters
         params = self._detect_pagination_strategy(page, page_size, offset, limit)
@@ -326,9 +348,16 @@ class DataStore:
             else:
                 instances = list(self._data[model_name].values())
 
-            # Apply filter if provided - O(n) but unavoidable for arbitrary filters
+            # Apply filters - order: custom filter_func first, then FilterSpec
             if filter_func:
                 instances = [inst for inst in instances if filter_func(inst)]
+
+            if filters:
+                instances = self._apply_filters(instances, filters)
+
+            # Apply sorting before pagination
+            if sort_by:
+                instances = self._apply_sorting(instances, sort_by)
 
             # Calculate pagination based on strategy
             total_items = len(instances)
@@ -376,6 +405,88 @@ class DataStore:
                 )
 
             return QueryResult(items=deepcopy(batch_items), pagination=pagination)
+
+    def _apply_filters(
+        self, instances: list[dict[str, Any]], filters: list[FilterSpec]
+    ) -> list[dict[str, Any]]:
+        """Apply filter specifications to instances (AND logic).
+
+        Args:
+            instances: List of instances to filter.
+            filters: List of filter specifications.
+
+        Returns:
+            Filtered list of instances.
+
+        Time Complexity:
+            O(n * m) where n is number of instances and m is number of filters.
+        """
+        filtered = instances
+        for filter_spec in filters:
+            filtered = [
+                inst for inst in filtered if self._match_filter(inst, filter_spec)
+            ]
+        return filtered
+
+    def _match_filter(self, instance: dict[str, Any], filter_spec: FilterSpec) -> bool:
+        """Check if instance matches a single filter.
+
+        Args:
+            instance: Instance data dictionary.
+            filter_spec: Filter specification.
+
+        Returns:
+            True if instance matches the filter, False otherwise.
+        """
+        field_value = instance.get(filter_spec.field)
+        filter_value = filter_spec.value
+        operator = filter_spec.operator
+
+        # Handle null filtering: ?field=null
+        if filter_value is None:
+            return field_value is None
+
+        # If field is None but filter is not, no match
+        if field_value is None:
+            return False
+
+        # Use class-level operator mapping (operator is StrEnum value)
+        try:
+            op_enum = FilterOperator(operator)
+            operator_func = self._FILTER_OPERATORS.get(op_enum)
+            return operator_func(field_value, filter_value) if operator_func else False
+        except ValueError:
+            return False
+
+    def _apply_sorting(
+        self, instances: list[dict[str, Any]], sort_specs: list[SortSpec]
+    ) -> list[dict[str, Any]]:
+        """Apply sorting specifications to instances.
+
+        Args:
+            instances: List of instances to sort.
+            sort_specs: List of sort specifications.
+
+        Returns:
+            Sorted list of instances.
+
+        Time Complexity:
+            O(n log n) where n is number of instances.
+        """
+        if not sort_specs:
+            return instances
+
+        # Sort in reverse order of sort_specs to maintain priority
+        # (last sort field has lowest priority)
+        sorted_instances = instances[:]
+        for spec in reversed(sort_specs):
+            sorted_instances = sorted(
+                sorted_instances,
+                key=lambda x: (x.get(spec.field) is None, x.get(spec.field)),
+                reverse=(spec.direction == SortDirection.DESC),
+            )
+
+        return sorted_instances
 
     def _detect_pagination_strategy(
         self,

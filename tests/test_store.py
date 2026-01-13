@@ -2,14 +2,23 @@
 
 from __future__ import annotations
 
+# ============================================================================
+# IMPORTS
+# ============================================================================
+# Standard library
 import threading
 
+# Third-party
 import pytest
+
+# Project/Local
 from mock_api.core.constants import (
     DEFAULT_PAGE_NUMBER,
     DEFAULT_PAGE_SIZE,
     MAX_PAGE_SIZE,
     PRIMARY_KEY_FIELD,
+    FilterOperator,
+    SortDirection,
 )
 from mock_api.core.exceptions import (
     DuplicateInstanceError,
@@ -17,7 +26,7 @@ from mock_api.core.exceptions import (
     StoreError,
 )
 from mock_api.core.store import DataStore
-from mock_api.core.types import PaginationInfo, QueryResult
+from mock_api.core.types import FilterSpec, PaginationInfo, QueryResult, SortSpec
 
 # =============================================================================
 # FIXTURES
@@ -677,3 +686,351 @@ def test_query_result_dataclass(loaded_store: DataStore) -> None:
     assert isinstance(result, QueryResult)
     assert hasattr(result, "items")
     assert hasattr(result, "pagination")
+
+
+# =============================================================================
+# TESTS: Filtering
+# =============================================================================
+
+
+@pytest.fixture
+def users_for_filtering() -> list[dict[str, str | int | None]]:
+    """Sample users with varied data for filter testing."""
+    return [
+        {
+            "id": 1,
+            "name": "Alice",
+            "age": 25,
+            "email": "alice@example.com",
+            "city": "NYC",
+        },
+        {"id": 2, "name": "Bob", "age": 30, "email": "bob@test.com", "city": "LA"},
+        {
+            "id": 3,
+            "name": "Charlie",
+            "age": 35,
+            "email": "charlie@example.com",
+            "city": "NYC",
+        },
+        {"id": 4, "name": "Diana", "age": 28, "email": "diana@test.com", "city": "SF"},
+        {"id": 5, "name": "Eve", "age": 22, "email": "eve@example.com", "city": "NYC"},
+        {"id": 6, "name": "Frank", "age": 40, "email": None, "city": "LA"},
+    ]
+
+
+@pytest.fixture
+def store_with_users(
+    store: DataStore, users_for_filtering: list[dict[str, str | int | None]]
+) -> DataStore:
+    """Store loaded with users for filtering tests."""
+    store.load({"User": users_for_filtering})
+    return store
+
+
+def test_list_with_equality_filter(store_with_users: DataStore) -> None:
+    """Test list with equality filter."""
+    filters = [FilterSpec(field="city", operator=FilterOperator.EQ, value="NYC")]
+    result = store_with_users.list("User", page=1, page_size=10, filters=filters)
+
+    assert len(result.items) == 3
+    assert all(item["city"] == "NYC" for item in result.items)
+    assert result.pagination.total_items == 3
+
+
+def test_list_with_gte_filter(store_with_users: DataStore) -> None:
+    """Test list with greater than or equal filter."""
+    filters = [FilterSpec(field="age", operator=FilterOperator.GTE, value=30)]
+    result = store_with_users.list("User", page=1, page_size=10, filters=filters)
+
+    assert len(result.items) == 3
+    assert all(item["age"] >= 30 for item in result.items)
+    assert {item["name"] for item in result.items} == {"Bob", "Charlie", "Frank"}
+
+
+def test_list_with_gt_filter(store_with_users: DataStore) -> None:
+    """Test list with greater than filter."""
+    filters = [FilterSpec(field="age", operator=FilterOperator.GT, value=30)]
+    result = store_with_users.list("User", page=1, page_size=10, filters=filters)
+
+    assert len(result.items) == 2
+    assert all(item["age"] > 30 for item in result.items)
+
+
+def test_list_with_lte_filter(store_with_users: DataStore) -> None:
+    """Test list with less than or equal filter."""
+    filters = [FilterSpec(field="age", operator=FilterOperator.LTE, value=28)]
+    result = store_with_users.list("User", page=1, page_size=10, filters=filters)
+
+    assert len(result.items) == 3
+    assert all(item["age"] <= 28 for item in result.items)
+
+
+def test_list_with_lt_filter(store_with_users: DataStore) -> None:
+    """Test list with less than filter."""
+    filters = [FilterSpec(field="age", operator=FilterOperator.LT, value=28)]
+    result = store_with_users.list("User", page=1, page_size=10, filters=filters)
+
+    assert len(result.items) == 2
+    assert all(item["age"] < 28 for item in result.items)
+
+
+def test_list_with_contains_filter(store_with_users: DataStore) -> None:
+    """Test list with contains filter (case-insensitive)."""
+    filters = [
+        FilterSpec(field="email", operator=FilterOperator.CONTAINS, value="example")
+    ]
+    result = store_with_users.list("User", page=1, page_size=10, filters=filters)
+
+    assert len(result.items) == 3
+    assert all(
+        "example" in item["email"].lower() for item in result.items if item["email"]
+    )
+
+
+def test_list_with_startswith_filter(store_with_users: DataStore) -> None:
+    """Test list with startswith filter (case-insensitive)."""
+    filters = [FilterSpec(field="name", operator=FilterOperator.STARTSWITH, value="a")]
+    result = store_with_users.list("User", page=1, page_size=10, filters=filters)
+
+    assert len(result.items) == 1
+    assert result.items[0]["name"] == "Alice"
+
+
+def test_list_with_endswith_filter(store_with_users: DataStore) -> None:
+    """Test list with endswith filter (case-insensitive)."""
+    filters = [
+        FilterSpec(field="email", operator=FilterOperator.ENDSWITH, value="test.com")
+    ]
+    result = store_with_users.list("User", page=1, page_size=10, filters=filters)
+
+    assert len(result.items) == 2
+    assert all(
+        item["email"].endswith("test.com") for item in result.items if item["email"]
+    )
+
+
+def test_list_with_in_filter(store_with_users: DataStore) -> None:
+    """Test list with IN filter."""
+    filters = [
+        FilterSpec(field="city", operator=FilterOperator.IN, value=["NYC", "SF"])
+    ]
+    result = store_with_users.list("User", page=1, page_size=10, filters=filters)
+
+    assert len(result.items) == 4
+    assert all(item["city"] in ["NYC", "SF"] for item in result.items)
+
+
+def test_list_with_null_filter(store_with_users: DataStore) -> None:
+    """Test list with null filter."""
+    filters = [FilterSpec(field="email", operator=FilterOperator.EQ, value=None)]
+    result = store_with_users.list("User", page=1, page_size=10, filters=filters)
+
+    assert len(result.items) == 1
+    assert result.items[0]["name"] == "Frank"
+    assert result.items[0]["email"] is None
+
+
+def test_list_with_multiple_filters_and_logic(store_with_users: DataStore) -> None:
+    """Test list with multiple filters using AND logic."""
+    filters = [
+        FilterSpec(field="city", operator=FilterOperator.EQ, value="NYC"),
+        FilterSpec(field="age", operator=FilterOperator.GTE, value=25),
+    ]
+    result = store_with_users.list("User", page=1, page_size=10, filters=filters)
+
+    assert len(result.items) == 2
+    assert all(item["city"] == "NYC" and item["age"] >= 25 for item in result.items)
+    assert {item["name"] for item in result.items} == {"Alice", "Charlie"}
+
+
+def test_list_filters_affect_pagination_count(store_with_users: DataStore) -> None:
+    """Test that filters correctly affect total_items in pagination."""
+    filters = [FilterSpec(field="city", operator=FilterOperator.EQ, value="NYC")]
+    result = store_with_users.list("User", page=1, page_size=2, filters=filters)
+
+    assert len(result.items) == 2
+    assert result.pagination.total_items == 3
+    assert result.pagination.total_pages == 2
+    assert result.pagination.has_next is True
+
+
+def test_list_string_filters_case_insensitive(store_with_users: DataStore) -> None:
+    """Test that string filters are case-insensitive."""
+    filters = [
+        FilterSpec(field="name", operator=FilterOperator.CONTAINS, value="ALICE")
+    ]
+    result = store_with_users.list("User", page=1, page_size=10, filters=filters)
+
+    assert len(result.items) == 1
+    assert result.items[0]["name"] == "Alice"
+
+
+# =============================================================================
+# TESTS: Sorting
+# =============================================================================
+
+
+def test_list_with_single_field_sort_asc(store_with_users: DataStore) -> None:
+    """Test list with single field ascending sort."""
+    sort_by = [SortSpec(field="age", direction=SortDirection.ASC)]
+    result = store_with_users.list("User", page=1, page_size=10, sort_by=sort_by)
+
+    ages = [item["age"] for item in result.items]
+    assert ages == sorted(ages)
+    assert result.items[0]["name"] == "Eve"  # age 22
+    assert result.items[-1]["name"] == "Frank"  # age 40
+
+
+def test_list_with_single_field_sort_desc(store_with_users: DataStore) -> None:
+    """Test list with single field descending sort."""
+    sort_by = [SortSpec(field="age", direction=SortDirection.DESC)]
+    result = store_with_users.list("User", page=1, page_size=10, sort_by=sort_by)
+
+    ages = [item["age"] for item in result.items]
+    assert ages == sorted(ages, reverse=True)
+    assert result.items[0]["name"] == "Frank"  # age 40
+    assert result.items[-1]["name"] == "Eve"  # age 22
+
+
+def test_list_with_multiple_field_sort(store_with_users: DataStore) -> None:
+    """Test list with multiple field sort."""
+    sort_by = [
+        SortSpec(field="city", direction=SortDirection.ASC),
+        SortSpec(field="age", direction=SortDirection.DESC),
+    ]
+    result = store_with_users.list("User", page=1, page_size=10, sort_by=sort_by)
+
+    # First sorted by city ASC, then by age DESC within same city
+    cities = [item["city"] for item in result.items]
+    assert cities == ["LA", "LA", "NYC", "NYC", "NYC", "SF"]
+
+    # Within LA: Frank (40) should come before Bob (30)
+    la_users = [item for item in result.items if item["city"] == "LA"]
+    assert la_users[0]["name"] == "Frank"
+    assert la_users[1]["name"] == "Bob"
+
+
+def test_list_sort_handles_none_values(store_with_users: DataStore) -> None:
+    """Test that sorting handles None values correctly (puts them at end)."""
+    sort_by = [SortSpec(field="email", direction=SortDirection.ASC)]
+    result = store_with_users.list("User", page=1, page_size=10, sort_by=sort_by)
+
+    # None values should be at the end
+    assert result.items[-1]["email"] is None
+    assert result.items[-1]["name"] == "Frank"
+
+
+def test_list_sort_with_different_types(store_with_users: DataStore) -> None:
+    """Test sorting with different data types (int, str)."""
+    # Test int sorting
+    sort_by_int = [SortSpec(field="age", direction=SortDirection.ASC)]
+    result_int = store_with_users.list(
+        "User", page=1, page_size=10, sort_by=sort_by_int
+    )
+    ages = [item["age"] for item in result_int.items]
+    assert ages == [22, 25, 28, 30, 35, 40]
+
+    # Test string sorting
+    sort_by_str = [SortSpec(field="name", direction=SortDirection.ASC)]
+    result_str = store_with_users.list(
+        "User", page=1, page_size=10, sort_by=sort_by_str
+    )
+    names = [item["name"] for item in result_str.items]
+    assert names == ["Alice", "Bob", "Charlie", "Diana", "Eve", "Frank"]
+
+
+# =============================================================================
+# TESTS: Combined Filtering and Sorting
+# =============================================================================
+
+
+def test_list_with_filters_and_sorting(store_with_users: DataStore) -> None:
+    """Test list with both filters and sorting."""
+    filters = [FilterSpec(field="city", operator=FilterOperator.EQ, value="NYC")]
+    sort_by = [SortSpec(field="age", direction=SortDirection.DESC)]
+    result = store_with_users.list(
+        "User", page=1, page_size=10, filters=filters, sort_by=sort_by
+    )
+
+    assert len(result.items) == 3
+    assert all(item["city"] == "NYC" for item in result.items)
+    # Sorted by age descending: Charlie (35), Alice (25), Eve (22)
+    assert result.items[0]["name"] == "Charlie"
+    assert result.items[1]["name"] == "Alice"
+    assert result.items[2]["name"] == "Eve"
+
+
+def test_list_with_filters_sorting_and_page_pagination(
+    store_with_users: DataStore,
+) -> None:
+    """Test list with filters, sorting, and page-based pagination."""
+    filters = [FilterSpec(field="age", operator=FilterOperator.GTE, value=25)]
+    sort_by = [SortSpec(field="name", direction=SortDirection.ASC)]
+    result = store_with_users.list(
+        "User", page=1, page_size=2, filters=filters, sort_by=sort_by
+    )
+
+    # Filtered: Alice, Bob, Charlie, Diana, Frank (5 total)
+    # Sorted by name: Alice, Bob, Charlie, Diana, Frank
+    # Page 1, size 2: Alice, Bob
+    assert len(result.items) == 2
+    assert result.items[0]["name"] == "Alice"
+    assert result.items[1]["name"] == "Bob"
+    assert result.pagination.total_items == 5
+    assert result.pagination.total_pages == 3
+    assert result.pagination.has_next is True
+
+
+def test_list_with_filters_sorting_and_offset_pagination(
+    store_with_users: DataStore,
+) -> None:
+    """Test list with filters, sorting, and offset-based pagination."""
+    filters = [FilterSpec(field="age", operator=FilterOperator.LTE, value=30)]
+    sort_by = [SortSpec(field="age", direction=SortDirection.ASC)]
+    result = store_with_users.list(
+        "User", offset=1, limit=2, filters=filters, sort_by=sort_by
+    )
+
+    # Filtered: Eve (22), Alice (25), Diana (28), Bob (30) - 4 total
+    # Sorted by age ASC: Eve (22), Alice (25), Diana (28), Bob (30)
+    # Offset 1, limit 2: Alice, Diana
+    assert len(result.items) == 2
+    assert result.items[0]["name"] == "Alice"
+    assert result.items[1]["name"] == "Diana"
+    assert result.pagination.total_items == 4
+    assert result.pagination.offset == 1
+    assert result.pagination.has_next is True
+    assert result.pagination.has_prev is True
+
+
+# =============================================================================
+# TESTS: Backward Compatibility
+# =============================================================================
+
+
+def test_list_with_legacy_filter_func_still_works(store_with_users: DataStore) -> None:
+    """Test that legacy filter_func parameter still works."""
+    result = store_with_users.list(
+        "User", page=1, page_size=10, filter_func=lambda u: u["age"] > 30
+    )
+
+    assert len(result.items) == 2
+    assert all(item["age"] > 30 for item in result.items)
+
+
+def test_list_with_both_filter_func_and_filters(store_with_users: DataStore) -> None:
+    """Test that both filter_func and filters can be used together (AND logic)."""
+    filters = [FilterSpec(field="city", operator=FilterOperator.EQ, value="NYC")]
+    result = store_with_users.list(
+        "User",
+        page=1,
+        page_size=10,
+        filter_func=lambda u: u["age"] >= 25,
+        filters=filters,
+    )
+
+    # filter_func: age >= 25 → Alice, Charlie
+    # filters: city == NYC
+    # Combined (AND): Alice, Charlie
+    assert len(result.items) == 2
+    assert {item["name"] for item in result.items} == {"Alice", "Charlie"}

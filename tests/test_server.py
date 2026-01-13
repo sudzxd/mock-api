@@ -2,11 +2,18 @@
 
 from __future__ import annotations
 
+# =============================================================================
+# IMPORTS
+# =============================================================================
+# Standard library
 from pathlib import Path
 
+# Third-party
 import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
+
+# Project/Local
 from mock_api.core.constants import HTTPStatus
 from mock_api.core.exceptions import SchemaFileNotFoundError
 from mock_api.core.server import Server
