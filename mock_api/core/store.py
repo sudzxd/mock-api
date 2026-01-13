@@ -421,6 +421,10 @@ class DataStore:
         """
         self._validate_batch_size(len(data_list), max_batch_size)
 
+        # Early return for empty list
+        if not data_list:
+            return self._build_bulk_result(BulkResponseKey.UPDATED, 0, [], [])
+
         with self._lock:
             if model_name not in self._data:
                 if not allow_partial:
@@ -510,6 +514,12 @@ class DataStore:
             3
         """
         self._validate_batch_size(len(ids), max_batch_size)
+
+        # Early return for empty list
+        if not ids:
+            return self._build_bulk_result(
+                BulkResponseKey.DELETED, 0, [], [], data_key=BulkResponseKey.IDS
+            )
 
         with self._lock:
             if model_name not in self._data:

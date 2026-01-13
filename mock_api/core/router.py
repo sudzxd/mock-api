@@ -306,15 +306,16 @@ class RouterGenerator:
         tag = model_name
 
         # Routes use registry for type-safe model access
+        # Add bulk operations first to avoid path conflicts with /{instance_id}
+        self._add_bulk_create_route(model_name, base_path, tag)
+        self._add_bulk_update_route(model_name, base_path, tag)
+        self._add_bulk_delete_route(model_name, base_path, tag)
+        # Regular CRUD operations
         self._add_list_route(model_name, base_path, tag)
         self._add_create_route(model_name, base_path, tag)
         self._add_read_route(model_name, base_path, tag)
         self._add_update_route(model_name, base_path, tag)
         self._add_delete_route(model_name, base_path, tag)
-        # Bulk operations
-        self._add_bulk_create_route(model_name, base_path, tag)
-        self._add_bulk_update_route(model_name, base_path, tag)
-        self._add_bulk_delete_route(model_name, base_path, tag)
 
     def _add_list_route(self, model_name: str, base_path: str, tag: str) -> None:
         """Add LIST route (GET /models) with filtering, sorting, and pagination."""
