@@ -423,120 +423,40 @@ DELETE /api/v1/users/{id}
 
 ### Filtering
 
-Apply filters to list endpoints using query parameters with optional operator suffixes.
+Filter list endpoints using query parameters with optional operator suffixes.
 
-#### Equality Filters
+**Operators:**
 
-Filter by exact field values:
+| Operator | Description | Example |
+|----------|-------------|---------|
+| (none) | Equality | `?status=active` |
+| `__gt` | Greater than | `?age__gt=18` |
+| `__gte` | Greater than or equal | `?age__gte=18` |
+| `__lt` | Less than | `?views__lt=100` |
+| `__lte` | Less than or equal | `?views__lte=100` |
+| `__contains` | Substring match (case-insensitive) | `?name__contains=smith` |
+| `__startswith` | Prefix match (case-insensitive) | `?email__startswith=admin` |
+| `__endswith` | Suffix match (case-insensitive) | `?email__endswith=@example.com` |
+| `__in` | Match any value (comma-separated) | `?id__in=1,2,3` |
 
-```http
-GET /api/v1/users?status=active
-GET /api/v1/posts?author_id=5
-GET /api/v1/users?age=25
-```
+**Special values:**
+- `?field=null` - Match null/None values
 
-#### Comparison Operators
-
-Use operator suffixes for numeric/datetime comparisons:
-
-- `__gte`: Greater than or equal (>=)
-- `__gt`: Greater than (>)
-- `__lte`: Less than or equal (<=)
-- `__lt`: Less than (<)
-
-```http
-GET /api/v1/users?age__gte=18
-GET /api/v1/posts?views__gt=100
-GET /api/v1/users?created_at__lt=2024-01-01
-```
-
-#### String Operators
-
-Case-insensitive string matching:
-
-- `__contains`: Substring match
-- `__startswith`: Prefix match
-- `__endswith`: Suffix match
-
-```http
-GET /api/v1/users?name__contains=smith
-GET /api/v1/users?email__endswith=@example.com
-GET /api/v1/posts?title__startswith=How
-```
-
-#### IN Operator
-
-Match against multiple values (comma-separated):
-
-```http
-GET /api/v1/users?status__in=active,pending
-GET /api/v1/posts?id__in=1,2,3,4,5
-```
-
-#### Null Filtering
-
-Match null/None values:
-
-```http
-GET /api/v1/users?bio=null
-GET /api/v1/posts?deleted_at=null
-```
-
-#### Multiple Filters (AND Logic)
-
-All filters are combined with AND logic:
-
-```http
-GET /api/v1/users?age__gte=18&status=active&city=NYC
-GET /api/v1/posts?author_id=5&published=true&views__gt=50
-```
-
-#### Configuration Limits
-
-Default limits (configurable in `mockapi-server.yml`):
-
-- Maximum filters per request: 10
-- Invalid field names return 400 error
-- Invalid operators return 400 error
-- Invalid value types return 400 error
+**Multiple filters:**
+- Combined with AND logic: `?age__gte=18&status=active&city=NYC`
+- Max filters per request: 10 (configurable)
 
 ### Sorting
 
-Sort results using the `sort` parameter.
-
-#### Single Field
-
-Ascending (default):
+Sort using the `sort` parameter. Prefix with `-` for descending.
 
 ```http
-GET /api/v1/users?sort=name
-GET /api/v1/posts?sort=created_at
+GET /api/v1/users?sort=name              # Ascending
+GET /api/v1/users?sort=-created_at       # Descending
+GET /api/v1/users?sort=-created_at,name  # Multiple fields
 ```
 
-Descending (prefix with `-`):
-
-```http
-GET /api/v1/users?sort=-age
-GET /api/v1/posts?sort=-created_at
-```
-
-#### Multiple Fields
-
-Comma-separated for multi-level sorting:
-
-```http
-GET /api/v1/users?sort=-created_at,name
-GET /api/v1/posts?sort=-views,title
-```
-
-Second field is used as tiebreaker when first field values are equal.
-
-#### Configuration Limits
-
-Default limits (configurable in `mockapi-server.yml`):
-
-- Maximum sort fields per request: 5
-- Invalid field names return 400 error
+- Max sort fields: 5 (configurable)
 - Null values sorted to end
 
 ### Pagination
