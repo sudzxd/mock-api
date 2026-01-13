@@ -195,10 +195,11 @@ jobs:
             benchmark-results-
 
       - name: Run benchmarks
+        continue-on-error: true
+        id: benchmarks
         run: |
           # Run benchmarks with comparison if baseline exists, otherwise just save
-          # Skip comparison if commit message contains [skip-benchmark-compare]
-          if [ -d .benchmarks ] && ! git log -1 --pretty=%B | grep -q "\[skip-benchmark-compare\]"; then
+          if [ -d .benchmarks ]; then
             uv run pytest tests/benchmarks/ \
               --benchmark-only \
               --benchmark-json=benchmark-results.json \
@@ -246,6 +247,49 @@ jobs:
               repo: context.repo.repo,
               commit_sha: context.sha,
               body: body
+            });
+
+      - name: Create issue on benchmark regression
+        if: steps.benchmarks.outcome == 'failure'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const data = JSON.parse(fs.readFileSync('benchmark-results.json', 'utf8'));
+
+            const benchmarks = data.benchmarks.map(b =>
+              `| ${b.name} | ${(b.stats.mean * 1000).toFixed(2)}ms | ${(b.stats.stddev * 1000).toFixed(2)}ms |`
+            ).join('\n');
+
+            const branch = context.ref.replace('refs/heads/', '');
+            const workflowUrl = `${context.serverUrl}/${context.repo.owner}/` +
+              `${context.repo.repo}/actions/runs/${context.runId}`;
+            const resetUrl = `${context.serverUrl}/${context.repo.owner}/` +
+              `${context.repo.repo}/actions/workflows/reset-benchmarks.yml`;
+
+            const body = `## Performance Regression Detected\n\n` +
+              `Benchmarks failed on commit ${context.sha.substring(0, 7)} ` +
+              `in branch **${branch}**.\n\n` +
+              `### Benchmark Results\n\n` +
+              `| Benchmark | Mean | Std Dev |\n` +
+              `|-----------|---------|---------|\\n${benchmarks}\n\n` +
+              `### Details\n\n` +
+              `- **Commit**: ${context.sha}\n` +
+              `- **Branch**: ${branch}\n` +
+              `- **Workflow Run**: ${workflowUrl}\n\n` +
+              `### Next Steps\n\n` +
+              `1. Review the benchmark comparison in the workflow run\n` +
+              `2. Determine if regression is acceptable for the feature changes\n` +
+              `3. If acceptable, use the [Reset Benchmark Baseline workflow]` +
+              `(${resetUrl}) to update the baseline\n` +
+              `4. Otherwise, investigate and optimize the performance issue`;
+
+            await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: `Performance regression detected in ${context.ref.replace('refs/heads/', '')}`,
+              body: body,
+              labels: ['performance', 'benchmarks']
             });
 
   security-full:
