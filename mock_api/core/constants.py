@@ -279,6 +279,11 @@ DEFAULT_PAGE_NUMBER = 1
 DEFAULT_MAX_FILTERS = 10
 DEFAULT_MAX_SORT_FIELDS = 5
 
+# Bulk operations defaults
+DEFAULT_MAX_BATCH_SIZE = 1000
+MAX_BATCH_SIZE_LIMIT = 10000
+MIN_BATCH_SIZE = 1
+
 # Filtering and sorting delimiters
 FILTER_OPERATOR_DELIMITER = "__"
 SORT_DESC_PREFIX = "-"
@@ -331,6 +336,24 @@ class ResponseKey(StrEnum):
     # Offset-based pagination fields
     OFFSET = "offset"
     LIMIT = "limit"
+
+
+class BulkResponseKey(StrEnum):
+    """Keys used in bulk operation response JSON structures."""
+
+    CREATED = "created"
+    UPDATED = "updated"
+    DELETED = "deleted"
+    DATA = "data"
+    IDS = "ids"
+    ERRORS = "errors"
+    FAILED = "failed"
+
+
+class BulkQueryParam(StrEnum):
+    """Query parameter names for bulk operations."""
+
+    IDS = "ids"
 
 
 class ModelName(StrEnum):

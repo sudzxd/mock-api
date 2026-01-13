@@ -47,6 +47,31 @@ curl -X POST http://localhost:3000/api/v1/users \
   -d '{"id": 999, "name": "Test", "email": "test@example.com", "created_at": "2025-01-10T10:00:00Z"}'
 ```
 
+### Bulk Operations
+
+Process multiple entities in one request.
+
+```bash
+# Bulk create
+curl -X POST http://localhost:3000/api/v1/users/bulk \
+  -H "Content-Type: application/json" \
+  -d '{"data": [
+    {"name": "Alice", "email": "alice@example.com", "created_at": "2025-01-10T10:00:00Z"},
+    {"name": "Bob", "email": "bob@example.com", "created_at": "2025-01-10T11:00:00Z"}
+  ]}'
+
+# Bulk update
+curl -X PUT http://localhost:3000/api/v1/users/bulk \
+  -H "Content-Type: application/json" \
+  -d '{"data": [
+    {"id": 1, "name": "Alice Updated", "email": "alice@example.com", "created_at": "2025-01-10T10:00:00Z"},
+    {"id": 2, "name": "Bob Updated", "email": "bob@example.com", "created_at": "2025-01-10T11:00:00Z"}
+  ]}'
+
+# Bulk delete
+curl -X DELETE "http://localhost:3000/api/v1/users/bulk?ids=1,2,3"
+```
+
 ## Blog with Relationships
 
 Multi-model API with foreign keys.

@@ -179,3 +179,23 @@ class SortSpec:
 
     field: str
     direction: str
+
+
+# =============================================================================
+# BULK OPERATION TYPES
+# =============================================================================
+
+
+@dataclass
+class BulkOperationError:
+    """Error details for a failed bulk operation item.
+
+    Attributes:
+        index: Index of the failed item in the original batch.
+        item: The data that failed to process.
+        error: Error message describing the failure.
+    """
+
+    index: int
+    item: dict[str, Any]
+    error: str

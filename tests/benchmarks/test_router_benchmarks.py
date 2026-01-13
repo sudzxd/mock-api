@@ -84,7 +84,7 @@ def test_route_generation_single_model(
 ) -> None:
     """Benchmark route generation for single simple model.
 
-    Performance target: < 30ms for 1 model (5 routes)
+    Performance target: < 30ms for 1 model (8 routes)
     Tests per-model route generation overhead.
     """
     parser = SchemaParser()
@@ -96,7 +96,8 @@ def test_route_generation_single_model(
     def generate_single() -> None:
         router_gen = RouterGenerator(schemas=contact_schema, store=store)
         router = router_gen.generate_routes()
-        assert len(router.routes) == 5  # list, create, read, update, delete
+        # 5 CRUD + 3 bulk operations
+        assert len(router.routes) == 8
 
     benchmark(generate_single)
 
@@ -129,7 +130,7 @@ def test_router_scaling_small(
     def generate_small() -> None:
         router_gen = RouterGenerator(schemas=subset_schemas, store=store)
         router = router_gen.generate_routes()
-        assert len(router.routes) == 15  # 3 models * 5 routes
+        assert len(router.routes) == 24  # 3 models * 8 routes
 
     benchmark(generate_small)
 
@@ -160,7 +161,7 @@ def test_router_scaling_medium(
     def generate_medium() -> None:
         router_gen = RouterGenerator(schemas=subset_schemas, store=store)
         router = router_gen.generate_routes()
-        assert len(router.routes) == 30  # 6 models * 5 routes
+        assert len(router.routes) == 48  # 6 models * 8 routes
 
     benchmark(generate_medium)
 

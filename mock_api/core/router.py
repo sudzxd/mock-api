@@ -44,6 +44,7 @@ from .constants import (
     URL_ID_PATH_SEGMENT,
     URL_PATH_SEPARATOR,
     URL_PLURAL_SUFFIX,
+    BulkResponseKey,
     FilterOperator,
     HTTPStatus,
     ModelName,
@@ -305,6 +306,11 @@ class RouterGenerator:
         tag = model_name
 
         # Routes use registry for type-safe model access
+        # Add bulk operations first to avoid path conflicts with /{instance_id}
+        self._add_bulk_create_route(model_name, base_path, tag)
+        self._add_bulk_update_route(model_name, base_path, tag)
+        self._add_bulk_delete_route(model_name, base_path, tag)
+        # Regular CRUD operations
         self._add_list_route(model_name, base_path, tag)
         self._add_create_route(model_name, base_path, tag)
         self._add_read_route(model_name, base_path, tag)
@@ -474,6 +480,196 @@ class RouterGenerator:
                 raise HTTPException(
                     status_code=HTTPStatus.NOT_FOUND, detail=RouteDescription.NOT_FOUND
                 )
+
+    def _add_bulk_create_route(self, model_name: str, base_path: str, tag: str) -> None:
+        """Add BULK CREATE route (POST /models/bulk)."""
+        input_model = self._registry.get_input_model(model_name)
+
+        async def bulk_create_handler(request_data: dict[str, Any]) -> dict[str, Any]:
+            # Extract data array
+            if BulkResponseKey.DATA not in request_data:
+                raise HTTPException(
+                    status_code=HTTPStatus.BAD_REQUEST,
+                    detail=f"Missing required field '{BulkResponseKey.DATA}'",
+                )
+
+            data_list = request_data[BulkResponseKey.DATA]
+
+            # Validate batch size
+            max_batch_size = self._config.bulk_operations.max_batch_size
+            if len(data_list) > max_batch_size:
+                detail = (
+                    f"Batch size {len(data_list)} exceeds maximum: {max_batch_size}"
+                )
+                raise HTTPException(
+                    status_code=HTTPStatus.BAD_REQUEST,
+                    detail=detail,
+                )
+
+            # Validate each item
+            validated_items: list[dict[str, Any]] = []
+            for idx, item in enumerate(data_list):
+                try:
+                    validated = input_model.model_validate(item)
+                    validated_items.append(validated.model_dump())
+                except ValidationError as e:
+                    raise HTTPException(
+                        status_code=HTTPStatus.UNPROCESSABLE_ENTITY,
+                        detail={
+                            "message": f"Validation failed for item at index {idx}",
+                            "errors": e.errors(),
+                        },
+                    ) from None
+
+            # Perform bulk create
+            allow_partial = self._config.bulk_operations.allow_partial
+            return self.store.bulk_create(
+                model_name,
+                validated_items,
+                allow_partial=allow_partial,
+                max_batch_size=max_batch_size,
+            )
+
+        # Override annotation for OpenAPI
+        bulk_create_handler.__annotations__["request_data"] = dict[str, Any]
+
+        self._router.add_api_route(
+            f"{base_path}/bulk",
+            bulk_create_handler,
+            methods=["POST"],
+            status_code=HTTPStatus.CREATED,
+            tags=[tag],
+            summary=f"Bulk create {model_name}s",
+            description="Create multiple instances in a single request. "
+            "All items must pass validation.",
+        )
+
+    def _add_bulk_update_route(self, model_name: str, base_path: str, tag: str) -> None:
+        """Add BULK UPDATE route (PUT /models/bulk)."""
+        input_model = self._registry.get_input_model(model_name)
+
+        async def bulk_update_handler(request_data: dict[str, Any]) -> dict[str, Any]:
+            # Extract data array
+            if BulkResponseKey.DATA not in request_data:
+                raise HTTPException(
+                    status_code=HTTPStatus.BAD_REQUEST,
+                    detail=f"Missing required field '{BulkResponseKey.DATA}'",
+                )
+
+            data_list = request_data[BulkResponseKey.DATA]
+
+            # Validate batch size
+            max_batch_size = self._config.bulk_operations.max_batch_size
+            if len(data_list) > max_batch_size:
+                detail = (
+                    f"Batch size {len(data_list)} exceeds maximum: {max_batch_size}"
+                )
+                raise HTTPException(
+                    status_code=HTTPStatus.BAD_REQUEST,
+                    detail=detail,
+                )
+
+            # Validate each item has ID and valid fields
+            validated_items: list[dict[str, Any]] = []
+            for idx, item in enumerate(data_list):
+                if PRIMARY_KEY_FIELD not in item:
+                    raise HTTPException(
+                        status_code=HTTPStatus.BAD_REQUEST,
+                        detail=f"Missing '{PRIMARY_KEY_FIELD}' for item at index {idx}",
+                    )
+
+                try:
+                    # Validate non-ID fields
+                    item_copy = item.copy()
+                    instance_id = item_copy.pop(PRIMARY_KEY_FIELD)
+                    validated = input_model.model_validate(item_copy)
+                    validated_data = validated.model_dump()
+                    validated_data[PRIMARY_KEY_FIELD] = instance_id
+                    validated_items.append(validated_data)
+                except ValidationError as e:
+                    raise HTTPException(
+                        status_code=HTTPStatus.UNPROCESSABLE_ENTITY,
+                        detail={
+                            "message": f"Validation failed for item at index {idx}",
+                            "errors": e.errors(),
+                        },
+                    ) from None
+
+            # Perform bulk update
+            allow_partial = self._config.bulk_operations.allow_partial
+            try:
+                return self.store.bulk_update(
+                    model_name,
+                    validated_items,
+                    allow_partial=allow_partial,
+                    max_batch_size=max_batch_size,
+                )
+            except InstanceNotFoundError as e:
+                raise HTTPException(
+                    status_code=HTTPStatus.NOT_FOUND,
+                    detail=str(e),
+                ) from None
+
+        # Override annotation for OpenAPI
+        bulk_update_handler.__annotations__["request_data"] = dict[str, Any]
+
+        self._router.add_api_route(
+            f"{base_path}/bulk",
+            bulk_update_handler,
+            methods=["PUT"],
+            status_code=HTTPStatus.OK,
+            tags=[tag],
+            summary=f"Bulk update {model_name}s",
+            description="Update multiple instances in a single request. "
+            "Each item must include 'id' field.",
+        )
+
+    def _add_bulk_delete_route(self, model_name: str, base_path: str, tag: str) -> None:
+        """Add BULK DELETE route (DELETE /models/bulk?ids=1,2,3)."""
+
+        @self._router.delete(
+            f"{base_path}/bulk",
+            status_code=HTTPStatus.OK,
+            tags=[tag],
+            summary=f"Bulk delete {model_name}s",
+            description="Delete multiple instances by IDs. "
+            "Provide IDs as comma-separated query parameter: ?ids=1,2,3",
+        )
+        async def bulk_delete_handler(
+            ids: str = Query(..., description="Comma-separated list of IDs to delete"),
+        ) -> dict[str, Any]:
+            # Parse IDs
+            try:
+                id_list = [int(id_str.strip()) for id_str in ids.split(",")]
+            except ValueError as e:
+                raise HTTPException(
+                    status_code=HTTPStatus.BAD_REQUEST,
+                    detail="Invalid ID format. IDs must be integers.",
+                ) from e
+
+            # Validate batch size
+            max_batch_size = self._config.bulk_operations.max_batch_size
+            if len(id_list) > max_batch_size:
+                detail = f"Batch size {len(id_list)} exceeds maximum: {max_batch_size}"
+                raise HTTPException(
+                    status_code=HTTPStatus.BAD_REQUEST,
+                    detail=detail,
+                )
+
+            # Perform bulk delete
+            allow_partial = self._config.bulk_operations.allow_partial
+            try:
+                return self.store.bulk_delete(
+                    model_name,
+                    id_list,
+                    allow_partial=allow_partial,
+                    max_batch_size=max_batch_size,
+                )
+            except InstanceNotFoundError as e:
+                raise HTTPException(
+                    status_code=HTTPStatus.NOT_FOUND,
+                    detail=str(e),
+                ) from None
 
     # =============================================================================
     # FILTER PARSING
