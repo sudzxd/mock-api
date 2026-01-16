@@ -1,13 +1,26 @@
-"""In-memory data store with CRUD operations and pagination.
+"""Data store facade delegating to repository implementation.
 
-This module provides a thread-safe in-memory store for managing mock data
-with full CRUD operations, filtering, pagination, and relationship awareness.
+This module provides the DataStore facade that delegates all operations to
+a Repository implementation (default: InMemoryRepository).
 
-Optimized with:
-- O(1) lookups using hash map indices
-- OrderedDict for maintaining insertion order with efficient operations
-- Reduced deepcopy overhead
-- Field indices for fast filtering
+The facade maintains backward compatibility while enabling a layered architecture
+that supports future storage backends via dependency injection.
+
+Architecture:
+- DataStore (Facade) → IRepository protocol → Concrete repository
+- Repository handles both CRUD and querying
+- Query optimization is backend-specific (in-memory vs SQL)
+
+TODO: Future storage backends (issues #48-51):
+- JSONRepository for file-based storage (issue #48)
+- SQLiteRepository for SQL storage (issue #49)
+- PostgreSQLRepository for production use (issue #50)
+- RedisRepository for caching (issue #51)
+
+TODO: Future architectural improvements (Phase 3+):
+- Add service layer between presentation and data access
+- Extract business logic into domain services
+- Add Unit of Work pattern for transaction management
 """
 
 from __future__ import annotations
@@ -16,43 +29,14 @@ from __future__ import annotations
 # IMPORTS
 # =============================================================================
 # Standard library
-import math
-import threading
-from collections import OrderedDict
 from collections.abc import Callable
-from copy import deepcopy
 from typing import Any
 
 # Project/local
+from ..implementations.storage import InMemoryRepository
 from ..utils.logger import get_logger
-from .constants import (
-    DEFAULT_LIMIT,
-    DEFAULT_OFFSET,
-    DEFAULT_PAGE_NUMBER,
-    DEFAULT_PAGE_SIZE,
-    MAX_LIMIT,
-    MAX_PAGE_SIZE,
-    MIN_LIMIT,
-    MIN_PAGE_SIZE,
-    PRIMARY_KEY_FIELD,
-    BulkResponseKey,
-    FilterOperator,
-    SortDirection,
-)
-from .exceptions import (
-    BatchSizeExceededError,
-    DuplicateInstanceError,
-    InstanceNotFoundError,
-    StoreError,
-)
-from .types import (
-    BulkOperationError,
-    FilterSpec,
-    PaginationInfo,
-    PaginationParams,
-    QueryResult,
-    SortSpec,
-)
+from .protocols import IDataStore
+from .types import FilterSpec, QueryResult, SortSpec
 
 # =============================================================================
 # TYPES & CONSTANTS
@@ -67,213 +51,113 @@ FilterFunc = Callable[[dict[str, Any]], bool]
 # =============================================================================
 
 
-class DataStore:
-    """Thread-safe in-memory data store with optimized CRUD operations.
+class DataStore(IDataStore):
+    """Facade delegating to repository implementation.
 
-    Provides a high-performance data store for managing mock data with:
-    - Full CRUD operations (Create, Read, Update, Delete)
-    - O(1) lookups via hash map indices
-    - Pagination support
-    - Filtering and querying
-    - Thread-safe operations
-    - Referential integrity awareness
+    Implements IDataStore protocol for backward compatibility and dependency injection.
 
-    Performance Characteristics:
-    - Create: O(1)
-    - Read: O(1) - hash map lookup
-    - Update: O(1) - direct index access
-    - Delete: O(1) - OrderedDict deletion
-    - List: O(k) where k is page size
-    - Count: O(1) or O(n) with filter
+    This facade delegates all operations to a repository implementation.
+    The repository handles both CRUD and querying, with query optimization
+    being backend-specific:
+    - In-memory: Load data, then filter/sort in Python
+    - SQL: Generate WHERE/ORDER BY clauses for database-level optimization
+
+    The layered architecture enables future improvements:
+    - Swap storage backends (JSON, SQLite, PostgreSQL, Redis)
+    - Add caching layer
+    - Implement Unit of Work for transactions
+    - Extract business logic to service layer
 
     Example:
         >>> store = DataStore()
         >>> store.create("User", {"id": 1, "name": "Alice"})
-        {'id': 1, 'name': 'Alice'}
-        >>> store.read("User", 1)  # O(1) lookup
         {'id': 1, 'name': 'Alice'}
         >>> result = store.list("User", page=1, page_size=10)
         >>> len(result.items)
         1
     """
 
-    # Filter operator functions - defined once at class level
-    _FILTER_OPERATORS: dict[FilterOperator, Callable[[Any, Any], bool]] = {
-        FilterOperator.EQ: lambda fv, v: fv == v,
-        FilterOperator.GT: lambda fv, v: fv > v,
-        FilterOperator.GTE: lambda fv, v: fv >= v,
-        FilterOperator.LT: lambda fv, v: fv < v,
-        FilterOperator.LTE: lambda fv, v: fv <= v,
-        FilterOperator.CONTAINS: lambda fv, v: v.lower() in str(fv).lower(),
-        FilterOperator.STARTSWITH: lambda fv, v: str(fv).lower().startswith(v.lower()),
-        FilterOperator.ENDSWITH: lambda fv, v: str(fv).lower().endswith(v.lower()),
-        FilterOperator.IN: lambda fv, v: fv in v,
-    }
+    def __init__(self, repository: InMemoryRepository | None = None) -> None:
+        """Initialize data store with repository implementation.
 
-    def __init__(self) -> None:
-        """Initialize an empty data store with optimized indices."""
-        # Primary storage: {model_name: OrderedDict{id: instance}}
-        # OrderedDict maintains insertion order + O(1) deletion
-        self._data: dict[str, OrderedDict[int, dict[str, Any]]] = {}
+        Args:
+            repository: Repository implementation (default: InMemoryRepository).
 
-        # Thread safety
-        self._lock = threading.Lock()
+        Note:
+            Dependency injection allows swapping implementations for:
+            - Testing with mock repositories
+            - Using different storage backends (JSON, SQLite, PostgreSQL)
+            - Custom query optimization strategies
+        """
+        self._repository = repository or InMemoryRepository()
+        logger.debug(f"Initialized DataStore with {type(self._repository).__name__}")
 
-        # ID counters for auto-increment
-        self._id_counters: dict[str, int] = {}
-
-        logger.debug("Initialized empty data store with hash indices")
+    # =========================================================================
+    # CRUD OPERATIONS (delegate to repository)
+    # =========================================================================
 
     def load(self, data: dict[str, list[dict[str, Any]]]) -> None:
         """Load bulk data into the store.
 
+        Delegates to repository for storage.
+
         Args:
             data: Dictionary mapping model names to lists of instances.
-
-        Example:
-            >>> data = {"User": [{"id": 1, "name": "Alice"}]}
-            >>> store.load(data)
         """
-        with self._lock:
-            for model_name, instances in data.items():
-                # Initialize OrderedDict for this model
-                self._data[model_name] = OrderedDict()
-
-                # Load instances with deep copy
-                for instance in instances:
-                    instance_copy = deepcopy(instance)
-                    instance_id = instance_copy.get(PRIMARY_KEY_FIELD)
-                    if instance_id is not None:
-                        self._data[model_name][instance_id] = instance_copy
-
-                        # Update ID counter
-                        if instance_id > self._id_counters.get(model_name, 0):
-                            self._id_counters[model_name] = instance_id
-
-            logger.info(f"Loaded data for {len(data)} model(s)")
+        self._repository.load(data)
 
     def create(
         self, model_name: str, data: dict[str, Any], auto_id: bool = True
     ) -> dict[str, Any]:
-        """Create a new instance in the store.
+        """Create a new instance.
+
+        Delegates to repository for storage.
 
         Args:
-            model_name: Name of the model to create.
+            model_name: Name of the model.
             data: Dictionary of field values.
             auto_id: If True, automatically assign ID if not provided.
 
         Returns:
             The created instance with ID assigned.
-
-        Raises:
-            ValueError: If instance with same ID already exists.
-
-        Time Complexity: O(1) - hash map insertion
-
-        Example:
-            >>> instance = store.create("User", {"name": "Bob"})
-            >>> instance["id"]
-            1
         """
-        with self._lock:
-            # Ensure model exists in store
-            if model_name not in self._data:
-                self._data[model_name] = OrderedDict()
-                self._id_counters[model_name] = 0
-
-            # Deep copy to avoid mutation
-            instance = deepcopy(data)
-
-            # Auto-assign ID if needed
-            if auto_id and PRIMARY_KEY_FIELD not in instance:
-                self._id_counters[model_name] += 1
-                instance[PRIMARY_KEY_FIELD] = self._id_counters[model_name]
-
-            # Get instance ID
-            instance_id = instance.get(PRIMARY_KEY_FIELD)
-
-            # Check for duplicate ID - O(1) with hash map
-            if instance_id is not None and instance_id in self._data[model_name]:
-                raise DuplicateInstanceError(model_name, instance_id)
-
-            # Add to store - O(1) insertion
-            if instance_id is not None:
-                self._data[model_name][instance_id] = instance
-                # Update counter to track highest ID
-                if instance_id > self._id_counters[model_name]:
-                    self._id_counters[model_name] = instance_id
-
-            logger.debug(f"Created {model_name} with {PRIMARY_KEY_FIELD}={instance_id}")
-            return deepcopy(instance)
+        return self._repository.create(model_name, data, auto_id)
 
     def read(self, model_name: str, instance_id: int) -> dict[str, Any] | None:
         """Read a single instance by ID.
 
+        Delegates to repository for retrieval.
+
         Args:
             model_name: Name of the model.
-            instance_id: ID of the instance to retrieve.
+            instance_id: ID of the instance.
 
         Returns:
-            The instance if found, None otherwise.
-
-        Time Complexity: O(1) - direct hash map lookup
-
-        Example:
-            >>> user = store.read("User", 1)
-            >>> user["name"]
-            'Alice'
+            The instance or None if not found.
         """
-        with self._lock:
-            # O(1) lookup with hash map
-            if model_name not in self._data:
-                return None
-
-            instance = self._data[model_name].get(instance_id)
-            return deepcopy(instance) if instance else None
+        return self._repository.read(model_name, instance_id)
 
     def update(
         self, model_name: str, instance_id: int, data: dict[str, Any]
     ) -> dict[str, Any]:
         """Update an existing instance.
 
+        Delegates to repository for storage.
+
         Args:
             model_name: Name of the model.
             instance_id: ID of the instance to update.
-            data: Dictionary of fields to update.
+            data: Dictionary of field values to update.
 
         Returns:
             The updated instance.
-
-        Raises:
-            ValueError: If instance not found.
-
-        Time Complexity: O(1) - direct hash map access
-
-        Example:
-            >>> updated = store.update("User", 1, {"name": "Alice Smith"})
-            >>> updated["name"]
-            'Alice Smith'
         """
-        with self._lock:
-            # O(1) lookup
-            if (
-                model_name not in self._data
-                or instance_id not in self._data[model_name]
-            ):
-                raise InstanceNotFoundError(model_name, instance_id)
-
-            # Get reference to instance
-            instance = self._data[model_name][instance_id]
-
-            # Update fields (preserve ID)
-            instance.update(data)
-            instance[PRIMARY_KEY_FIELD] = instance_id
-
-            logger.debug(f"Updated {model_name} with {PRIMARY_KEY_FIELD}={instance_id}")
-            return deepcopy(instance)
+        return self._repository.update(model_name, instance_id, data)
 
     def delete(self, model_name: str, instance_id: int) -> bool:
         """Delete an instance by ID.
+
+        Delegates to repository for deletion.
 
         Args:
             model_name: Name of the model.
@@ -281,29 +165,12 @@ class DataStore:
 
         Returns:
             True if deleted, False if not found.
-
-        Time Complexity: O(1) - OrderedDict deletion
-
-        Example:
-            >>> store.delete("User", 1)
-            True
-            >>> store.delete("User", 999)
-            False
         """
-        with self._lock:
-            if model_name not in self._data:
-                return False
+        return self._repository.delete(model_name, instance_id)
 
-            # O(1) deletion with OrderedDict
-            deleted_instance = self._data[model_name].pop(instance_id, None)
-
-            if deleted_instance:
-                logger.debug(
-                    f"Deleted {model_name} with {PRIMARY_KEY_FIELD}={instance_id}"
-                )
-                return True
-
-            return False
+    # =========================================================================
+    # BULK OPERATIONS (delegate to repository)
+    # =========================================================================
 
     def bulk_create(
         self,
@@ -314,77 +181,20 @@ class DataStore:
     ) -> dict[str, Any]:
         """Create multiple instances atomically.
 
+        Delegates to repository for bulk storage.
+
         Args:
-            model_name: Name of the model to create.
-            data_list: List of instance dictionaries to create.
-            allow_partial: If True, continue on errors; if False, rollback on
-                first error.
-            max_batch_size: Maximum batch size allowed (optional validation).
+            model_name: Name of the model.
+            data_list: List of instances to create.
+            allow_partial: If True, continue on errors; if False, rollback.
+            max_batch_size: Maximum batch size allowed.
 
         Returns:
-            Dict with 'created' count, 'data' list, and optional 'errors' list.
-
-        Raises:
-            BatchSizeExceededError: If batch size exceeds maximum.
-
-        Time Complexity: O(n) where n is batch size
-
-        Example:
-            >>> result = store.bulk_create("User", [
-            ...     {"name": "Alice"},
-            ...     {"name": "Bob"}
-            ... ])
-            >>> result["created"]
-            2
+            Dict with 'created' count and optional 'errors'.
         """
-        self._validate_batch_size(len(data_list), max_batch_size)
-
-        with self._lock:
-            # Ensure model exists
-            if model_name not in self._data:
-                self._data[model_name] = OrderedDict()
-                self._id_counters[model_name] = 0
-
-            created_items: list[dict[str, Any]] = []
-            created_ids: list[int] = []
-            errors: list[BulkOperationError] = []
-
-            for idx, data in enumerate(data_list):
-                try:
-                    instance = deepcopy(data)
-
-                    # Auto-assign ID
-                    if PRIMARY_KEY_FIELD not in instance:
-                        self._id_counters[model_name] += 1
-                        instance[PRIMARY_KEY_FIELD] = self._id_counters[model_name]
-
-                    instance_id = instance[PRIMARY_KEY_FIELD]
-
-                    # Check for duplicate
-                    self._check_duplicate_id(model_name, instance_id)
-
-                    # Add to store
-                    self._data[model_name][instance_id] = instance
-                    created_items.append(deepcopy(instance))
-                    created_ids.append(instance_id)
-
-                except Exception as e:
-                    error = BulkOperationError(index=idx, item=data, error=str(e))
-                    errors.append(error)
-
-                    if not allow_partial:
-                        # Rollback all created items
-                        for created_id in created_ids:
-                            self._data[model_name].pop(created_id, None)
-                        raise
-
-            logger.info(
-                f"Bulk created {len(created_items)}/{len(data_list)} {model_name}(s)"
-            )
-
-            return self._build_bulk_result(
-                BulkResponseKey.CREATED, len(created_items), created_items, errors
-            )
+        return self._repository.bulk_create(
+            model_name, data_list, allow_partial, max_batch_size
+        )
 
     def bulk_update(
         self,
@@ -395,192 +205,48 @@ class DataStore:
     ) -> dict[str, Any]:
         """Update multiple instances atomically.
 
+        Delegates to repository for bulk updates.
+
         Args:
             model_name: Name of the model.
-            data_list: List of dicts with 'id' and fields to update.
-            allow_partial: If True, continue on errors; if False, rollback on
-                first error.
-            max_batch_size: Maximum batch size allowed (optional validation).
+            data_list: List of instances to update (must include 'id').
+            allow_partial: If True, continue on errors; if False, rollback.
+            max_batch_size: Maximum batch size allowed.
 
         Returns:
-            Dict with 'updated' count, 'data' list, and optional 'errors' list.
-
-        Raises:
-            BatchSizeExceededError: If batch size exceeds maximum.
-            InstanceNotFoundError: If instance not found (when not in partial mode).
-
-        Time Complexity: O(n) where n is batch size
-
-        Example:
-            >>> result = store.bulk_update("User", [
-            ...     {"id": 1, "name": "Alice Updated"},
-            ...     {"id": 2, "name": "Bob Updated"}
-            ... ])
-            >>> result["updated"]
-            2
+            Dict with 'updated' count and optional 'errors'.
         """
-        self._validate_batch_size(len(data_list), max_batch_size)
-
-        # Early return for empty list
-        if not data_list:
-            return self._build_bulk_result(BulkResponseKey.UPDATED, 0, [], [])
-
-        with self._lock:
-            if model_name not in self._data:
-                if not allow_partial:
-                    raise InstanceNotFoundError(model_name, -1)
-                return self._build_bulk_result(
-                    BulkResponseKey.UPDATED,
-                    0,
-                    [],
-                    [
-                        BulkOperationError(idx, data, f"Model {model_name} not found")
-                        for idx, data in enumerate(data_list)
-                    ],
-                )
-
-            updated_items: list[dict[str, Any]] = []
-            original_values: dict[int, dict[str, Any]] = {}
-            errors: list[BulkOperationError] = []
-
-            for idx, data in enumerate(data_list):
-                try:
-                    # Validate ID present
-                    self._validate_id_present(data)
-
-                    instance_id = data[PRIMARY_KEY_FIELD]
-
-                    # Check exists
-                    self._check_instance_exists(model_name, instance_id)
-
-                    # Store original for rollback
-                    original_values[instance_id] = deepcopy(
-                        self._data[model_name][instance_id]
-                    )
-
-                    # Update fields
-                    instance = self._data[model_name][instance_id]
-                    instance.update(data)
-                    instance[PRIMARY_KEY_FIELD] = instance_id
-
-                    updated_items.append(deepcopy(instance))
-
-                except Exception as e:
-                    error = BulkOperationError(index=idx, item=data, error=str(e))
-                    errors.append(error)
-
-                    if not allow_partial:
-                        # Rollback all updates
-                        for orig_id, orig_data in original_values.items():
-                            self._data[model_name][orig_id] = orig_data
-                        raise
-
-            logger.info(
-                f"Bulk updated {len(updated_items)}/{len(data_list)} {model_name}(s)"
-            )
-
-            return self._build_bulk_result(
-                BulkResponseKey.UPDATED, len(updated_items), updated_items, errors
-            )
+        return self._repository.bulk_update(
+            model_name, data_list, allow_partial, max_batch_size
+        )
 
     def bulk_delete(
         self,
         model_name: str,
-        ids: list[int],
+        id_list: list[int],
         allow_partial: bool = False,
         max_batch_size: int | None = None,
     ) -> dict[str, Any]:
         """Delete multiple instances atomically.
 
+        Delegates to repository for bulk deletion.
+
         Args:
             model_name: Name of the model.
-            ids: List of instance IDs to delete.
-            allow_partial: If True, continue on errors; if False, rollback on
-                first error.
-            max_batch_size: Maximum batch size allowed (optional validation).
+            id_list: List of instance IDs to delete.
+            allow_partial: If True, continue on errors; if False, rollback.
+            max_batch_size: Maximum batch size allowed.
 
         Returns:
-            Dict with 'deleted' count, 'ids' list, and optional 'errors' list.
-
-        Raises:
-            BatchSizeExceededError: If batch size exceeds maximum.
-            InstanceNotFoundError: If instance not found (when not in partial mode).
-
-        Time Complexity: O(n) where n is batch size
-
-        Example:
-            >>> result = store.bulk_delete("User", [1, 2, 3])
-            >>> result["deleted"]
-            3
+            Dict with 'deleted' count and optional 'errors'.
         """
-        self._validate_batch_size(len(ids), max_batch_size)
+        return self._repository.bulk_delete(
+            model_name, id_list, allow_partial, max_batch_size
+        )
 
-        # Early return for empty list
-        if not ids:
-            return self._build_bulk_result(
-                BulkResponseKey.DELETED, 0, [], [], data_key=BulkResponseKey.IDS
-            )
-
-        with self._lock:
-            if model_name not in self._data:
-                if not allow_partial:
-                    raise InstanceNotFoundError(model_name, -1)
-                return self._build_bulk_result(
-                    BulkResponseKey.DELETED,
-                    0,
-                    [],
-                    [
-                        BulkOperationError(
-                            idx,
-                            {PRIMARY_KEY_FIELD: instance_id},
-                            f"Model {model_name} not found",
-                        )
-                        for idx, instance_id in enumerate(ids)
-                    ],
-                    data_key=BulkResponseKey.IDS,
-                )
-
-            deleted_ids: list[int] = []
-            deleted_instances: dict[int, dict[str, Any]] = {}
-            errors: list[BulkOperationError] = []
-
-            for idx, instance_id in enumerate(ids):
-                try:
-                    # Check exists
-                    self._check_instance_exists(model_name, instance_id)
-
-                    # Store for rollback
-                    deleted_instances[instance_id] = deepcopy(
-                        self._data[model_name][instance_id]
-                    )
-
-                    # Delete
-                    self._data[model_name].pop(instance_id)
-                    deleted_ids.append(instance_id)
-
-                except Exception as e:
-                    error = BulkOperationError(
-                        index=idx,
-                        item={PRIMARY_KEY_FIELD: instance_id},
-                        error=str(e),
-                    )
-                    errors.append(error)
-
-                    if not allow_partial:
-                        # Rollback all deletions
-                        for del_id, del_instance in deleted_instances.items():
-                            self._data[model_name][del_id] = del_instance
-                        raise
-
-            logger.info(f"Bulk deleted {len(deleted_ids)}/{len(ids)} {model_name}(s)")
-
-            return self._build_bulk_result(
-                BulkResponseKey.DELETED,
-                len(deleted_ids),
-                deleted_ids,
-                errors,
-                data_key=BulkResponseKey.IDS,
-            )
+    # =========================================================================
+    # QUERY OPERATIONS (delegate to query executor)
+    # =========================================================================
 
     def list(
         self,
@@ -593,264 +259,47 @@ class DataStore:
         sort_by: list[SortSpec] | None = None,
         filter_func: FilterFunc | None = None,
     ) -> QueryResult:
-        """List instances with pagination, filtering, and sorting.
+        """List instances with filtering, sorting, and pagination.
 
-        Supports both page-based and offset-based pagination. Strategy is
-        auto-detected based on which parameters are provided.
+        Delegates to repository for query execution.
 
         Args:
             model_name: Name of the model.
-            page: Page number (1-indexed) for page-based pagination.
-            page_size: Number of items per page.
-            offset: Starting offset (0-indexed) for offset-based pagination.
-            limit: Maximum items to return.
-            filters: Optional list of filter specifications (AND logic).
+            page: Page number (1-indexed).
+            page_size: Items per page.
+            offset: Number of items to skip.
+            limit: Maximum number of items to return.
+            filters: Optional list of filter specifications.
             sort_by: Optional list of sort specifications.
-            filter_func: Optional function to filter instances (backward compatibility).
+            filter_func: Optional custom filter function (legacy support).
 
         Returns:
-            QueryResult with items and pagination info.
+            QueryResult with filtered, sorted, paginated items and metadata.
 
-        Raises:
-            StoreError: If pagination parameters are invalid or conflicting.
-
-        Time Complexity:
-        - Without filter/sort: O(k) where k is page size/limit
-        - With filter: O(n) where n is total instances
-        - With sort: O(n log n) where n is filtered instances
-
-        Example:
-            # Page-based with filtering
-            >>> result = store.list("User", page=1, page_size=10,
-            ...     filters=[FilterSpec(field="age", operator="gte", value=18)])
-
-            # Offset-based with sorting
-            >>> result = store.list("User", offset=0, limit=10,
-            ...     sort_by=[SortSpec(field="created_at", direction="desc")])
+        Note:
+            Repository implementation determines query optimization strategy:
+            - In-memory: Load all, then filter/sort in Python
+            - SQL: Generate WHERE/ORDER BY clauses for database optimization
         """
-        # Detect strategy and validate parameters
-        params = self._detect_pagination_strategy(page, page_size, offset, limit)
-
-        with self._lock:
-            # Get all instances for model - values() on OrderedDict maintains order
-            if model_name not in self._data:
-                instances = []
-            else:
-                instances = list(self._data[model_name].values())
-
-            # Apply filters - order: custom filter_func first, then FilterSpec
-            if filter_func:
-                instances = [inst for inst in instances if filter_func(inst)]
-            if filters:
-                instances = self._apply_filters(instances, filters)
-            # Apply sorting before pagination
-            if sort_by:
-                instances = self._apply_sorting(instances, sort_by)
-
-            # Calculate pagination based on strategy
-            total_items = len(instances)
-
-            # Get slice - O(k) where k is batch_size
-            end_idx = params.start_idx + params.batch_size
-            batch_items = instances[params.start_idx : end_idx]
-
-            # Build pagination info based on strategy
-            if params.strategy == "page":
-                total_pages = (
-                    math.ceil(total_items / params.batch_size) if total_items > 0 else 1
-                )
-                has_next = params.page_num < total_pages
-                has_prev = params.page_num > 1
-
-                pagination = PaginationInfo(
-                    total_items=total_items,
-                    has_next=has_next,
-                    has_prev=has_prev,
-                    page=params.page_num,
-                    page_size=params.batch_size,
-                    total_pages=total_pages,
-                )
-
-                logger.debug(
-                    f"Listed {len(batch_items)} {model_name}(s) "
-                    f"(page {params.page_num}/{total_pages})"
-                )
-            else:  # offset strategy
-                has_next = end_idx < total_items
-                has_prev = params.start_idx > 0
-
-                pagination = PaginationInfo(
-                    total_items=total_items,
-                    has_next=has_next,
-                    has_prev=has_prev,
-                    offset=params.start_idx,
-                    limit=params.batch_size,
-                )
-
-                logger.debug(
-                    f"Listed {len(batch_items)} {model_name}(s) "
-                    f"(offset {params.start_idx}, limit {params.batch_size})"
-                )
-
-            return QueryResult(items=deepcopy(batch_items), pagination=pagination)
-
-    def _apply_filters(
-        self, instances: list[dict[str, Any]], filters: list[FilterSpec]
-    ) -> list[dict[str, Any]]:
-        """Apply filter specifications to instances (AND logic).
-
-        Args:
-            instances: List of instances to filter.
-            filters: List of filter specifications.
-
-        Returns:
-            Filtered list of instances.
-
-        Time Complexity:
-            O(n * m) where n is number of instances and m is number of filters.
-        """
-        filtered = instances
-        for filter_spec in filters:
-            filtered = [
-                inst for inst in filtered if self._match_filter(inst, filter_spec)
-            ]
-        return filtered
-
-    def _match_filter(self, instance: dict[str, Any], filter_spec: FilterSpec) -> bool:
-        """Check if instance matches a single filter.
-
-        Args:
-            instance: Instance data dictionary.
-            filter_spec: Filter specification.
-
-        Returns:
-            True if instance matches the filter, False otherwise.
-        """
-        field_value = instance.get(filter_spec.field)
-        filter_value = filter_spec.value
-        operator = filter_spec.operator
-
-        # Handle null filtering: ?field=null
-        if filter_value is None:
-            return field_value is None
-
-        # If field is None but filter is not, no match
-        if field_value is None:
-            return False
-
-        # Use class-level operator mapping (operator is StrEnum value)
-        try:
-            op_enum = FilterOperator(operator)
-            operator_func = self._FILTER_OPERATORS.get(op_enum)
-            return operator_func(field_value, filter_value) if operator_func else False
-        except ValueError:
-            return False
-
-    def _apply_sorting(
-        self, instances: list[dict[str, Any]], sort_specs: list[SortSpec]
-    ) -> list[dict[str, Any]]:
-        """Apply sorting specifications to instances.
-
-        Args:
-            instances: List of instances to sort.
-            sort_specs: List of sort specifications.
-
-        Returns:
-            Sorted list of instances.
-
-        Time Complexity:
-            O(n log n) where n is number of instances.
-        """
-        if not sort_specs:
-            return instances
-
-        # Sort in reverse order of sort_specs to maintain priority
-        # (last sort field has lowest priority)
-        sorted_instances = instances[:]
-        for spec in reversed(sort_specs):
-            sorted_instances = sorted(
-                sorted_instances,
-                key=lambda x: (x.get(spec.field) is None, x.get(spec.field)),
-                reverse=(spec.direction == SortDirection.DESC),
-            )
-
-        return sorted_instances
-
-    def _detect_pagination_strategy(
-        self,
-        page: int | None,
-        page_size: int | None,
-        offset: int | None,
-        limit: int | None,
-    ) -> PaginationParams:
-        """Detect pagination strategy and return normalized params.
-
-        Returns:
-            PaginationParams with strategy, start_idx, batch_size, and page_num
-
-        Raises:
-            StoreError: If conflicting params provided or invalid values
-        """
-        has_offset_params = offset is not None or limit is not None
-        has_page_params = page is not None or page_size is not None
-
-        # Check for conflicting params
-        if has_offset_params and has_page_params:
-            raise StoreError(
-                "Cannot use both page-based and offset-based pagination",
-                "Use either (page, page_size) or (offset, limit), not both",
-            )
-
-        if has_offset_params:
-            # Offset-based strategy
-            offset_val = offset if offset is not None else DEFAULT_OFFSET
-            limit_val = limit if limit is not None else DEFAULT_LIMIT
-
-            # Validate
-            if offset_val < 0:
-                raise StoreError(
-                    f"Invalid offset: {offset_val}",
-                    "Offset must be >= 0",
-                )
-            if limit_val < MIN_LIMIT or limit_val > MAX_LIMIT:
-                raise StoreError(
-                    f"Invalid limit: {limit_val}",
-                    f"Limit must be between {MIN_LIMIT} and {MAX_LIMIT}",
-                )
-
-            return PaginationParams(
-                strategy="offset",
-                start_idx=offset_val,
-                batch_size=limit_val,
-                page_num=0,
-            )
-
-        # Page-based strategy (default)
-        page_val = page if page is not None else DEFAULT_PAGE_NUMBER
-        page_size_val = page_size if page_size is not None else DEFAULT_PAGE_SIZE
-
-        # Validate
-        if page_val < DEFAULT_PAGE_NUMBER:
-            raise StoreError(
-                f"Invalid page number: {page_val}",
-                f"Page must be >= {DEFAULT_PAGE_NUMBER}",
-            )
-        if page_size_val < MIN_PAGE_SIZE or page_size_val > MAX_PAGE_SIZE:
-            raise StoreError(
-                f"Invalid page size: {page_size_val}",
-                f"Page size must be between {MIN_PAGE_SIZE} and {MAX_PAGE_SIZE}",
-            )
-
-        start_idx = (page_val - 1) * page_size_val
-        return PaginationParams(
-            strategy="page",
-            start_idx=start_idx,
-            batch_size=page_size_val,
-            page_num=page_val,
+        return self._repository.list(
+            model_name=model_name,
+            page=page,
+            page_size=page_size,
+            offset=offset,
+            limit=limit,
+            filters=filters,
+            sort_by=sort_by,
+            filter_func=filter_func,
         )
+
+    # =========================================================================
+    # UTILITY OPERATIONS (delegate to repository)
+    # =========================================================================
 
     def count(self, model_name: str, filter_func: FilterFunc | None = None) -> int:
         """Count instances, optionally with filtering.
+
+        Delegates to repository for counting.
 
         Args:
             model_name: Name of the model.
@@ -858,143 +307,25 @@ class DataStore:
 
         Returns:
             Number of instances matching the filter.
-
-        Time Complexity:
-        - Without filter: O(1) - length of OrderedDict
-        - With filter: O(n) - must check each instance
-
-        Example:
-            >>> store.count("User")
-            5
-            >>> store.count("User", lambda u: u["name"].startswith("A"))
-            2
         """
-        with self._lock:
-            if model_name not in self._data:
-                return 0
-
-            instances = self._data[model_name].values()
-
-            if filter_func:
-                # O(n) with filter
-                return sum(1 for inst in instances if filter_func(inst))
-
-            # O(1) without filter
-            return len(self._data[model_name])
+        return self._repository.count(model_name, filter_func)
 
     def clear(self, model_name: str | None = None) -> None:
         """Clear data from store.
 
-        Args:
-            model_name: If provided, clear only this model. Otherwise clear all.
+        Delegates to repository for data clearing.
 
-        Example:
-            >>> store.clear("User")  # Clear only users
-            >>> store.clear()  # Clear all data
+        Args:
+            model_name: Name of model to clear, or None to clear all.
         """
-        with self._lock:
-            if model_name:
-                self._data[model_name] = OrderedDict()
-                self._id_counters[model_name] = 0
-                logger.debug(f"Cleared {model_name} data")
-            else:
-                self._data.clear()
-                self._id_counters.clear()
-                logger.debug("Cleared all data")
+        self._repository.clear(model_name)
 
     def get_models(self) -> list[str]:
-        """Get list of all model names in the store.
+        """Get list of all model names in store.
+
+        Delegates to repository.
 
         Returns:
             List of model names.
-
-        Time Complexity: O(n) where n is number of models
-
-        Example:
-            >>> store.get_models()
-            ['User', 'Post', 'Comment']
         """
-        with self._lock:
-            return list(self._data.keys())
-
-    # =============================================================================
-    # PRIVATE HELPERS: Bulk Operations
-    # =============================================================================
-
-    def _validate_batch_size(self, batch_size: int, max_batch_size: int | None) -> None:
-        """Validate batch size against maximum allowed.
-
-        Args:
-            batch_size: Actual batch size.
-            max_batch_size: Maximum allowed batch size (None = no limit).
-
-        Raises:
-            BatchSizeExceededError: If batch size exceeds maximum.
-        """
-        if max_batch_size and batch_size > max_batch_size:
-            raise BatchSizeExceededError(batch_size, max_batch_size)
-
-    def _build_bulk_result(
-        self,
-        operation_key: str,
-        count: int,
-        data: list[dict[str, Any]] | list[int],
-        errors: list[BulkOperationError],
-        data_key: str = BulkResponseKey.DATA,
-    ) -> dict[str, Any]:
-        """Build standardized bulk operation result.
-
-        Args:
-            operation_key: Result key (e.g., "created", "updated", "deleted").
-            count: Number of successful operations.
-            data: List of data items or IDs.
-            errors: List of errors that occurred.
-            data_key: Key for data in result (default: "data", or "ids" for delete).
-
-        Returns:
-            Standardized result dictionary.
-        """
-        result = {operation_key: count, data_key: data}
-        if errors:
-            result[BulkResponseKey.ERRORS] = [
-                {"index": e.index, "item": e.item, "error": e.error} for e in errors
-            ]
-        return result
-
-    def _check_duplicate_id(self, model_name: str, instance_id: int) -> None:
-        """Check if instance ID already exists in model.
-
-        Args:
-            model_name: Name of the model.
-            instance_id: ID to check.
-
-        Raises:
-            DuplicateInstanceError: If instance with ID already exists.
-        """
-        if instance_id in self._data[model_name]:
-            raise DuplicateInstanceError(model_name, instance_id)
-
-    def _validate_id_present(self, data: dict[str, Any]) -> None:
-        """Validate that primary key field is present in data.
-
-        Args:
-            data: Dictionary to validate.
-
-        Raises:
-            ValueError: If primary key field is missing.
-        """
-        if PRIMARY_KEY_FIELD not in data:
-            raise ValueError(f"Missing required field '{PRIMARY_KEY_FIELD}' for update")
-
-    def _check_instance_exists(self, model_name: str, instance_id: int) -> None:
-        """Check if instance exists in model.
-
-        Args:
-            model_name: Name of the model.
-            instance_id: ID to check.
-
-        Raises:
-            InstanceNotFoundError: If instance with ID does not exist.
-        """
-        if instance_id not in self._data[model_name]:
-            raise InstanceNotFoundError(model_name, instance_id)
+        return self._repository.get_models()

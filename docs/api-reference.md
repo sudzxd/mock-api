@@ -426,13 +426,15 @@ Process multiple entities in a single request. All-or-nothing by default.
 **Bulk Delete:** `DELETE /api/v1/users/bulk?ids=1,2,3`
 
 **Configuration:**
+
 ```yaml
 bulk_operations:
-  max_batch_size: 1000  # Max items per request (default: 1000, max: 10000)
-  allow_partial: false  # Continue on errors (default: false)
+  max_batch_size: 1000 # Max items per request (default: 1000, max: 10000)
+  allow_partial: false # Continue on errors (default: false)
 ```
 
 **Response format:**
+
 ```json
 {
   "created": 2,  // or "updated", "deleted"
@@ -451,22 +453,24 @@ Filter list endpoints using query parameters with optional operator suffixes.
 
 **Operators:**
 
-| Operator | Description | Example |
-|----------|-------------|---------|
-| (none) | Equality | `?status=active` |
-| `__gt` | Greater than | `?age__gt=18` |
-| `__gte` | Greater than or equal | `?age__gte=18` |
-| `__lt` | Less than | `?views__lt=100` |
-| `__lte` | Less than or equal | `?views__lte=100` |
-| `__contains` | Substring match (case-insensitive) | `?name__contains=smith` |
-| `__startswith` | Prefix match (case-insensitive) | `?email__startswith=admin` |
-| `__endswith` | Suffix match (case-insensitive) | `?email__endswith=@example.com` |
-| `__in` | Match any value (comma-separated) | `?id__in=1,2,3` |
+| Operator       | Description                        | Example                         |
+| -------------- | ---------------------------------- | ------------------------------- |
+| (none)         | Equality                           | `?status=active`                |
+| `__gt`         | Greater than                       | `?age__gt=18`                   |
+| `__gte`        | Greater than or equal              | `?age__gte=18`                  |
+| `__lt`         | Less than                          | `?views__lt=100`                |
+| `__lte`        | Less than or equal                 | `?views__lte=100`               |
+| `__contains`   | Substring match (case-insensitive) | `?name__contains=smith`         |
+| `__startswith` | Prefix match (case-insensitive)    | `?email__startswith=admin`      |
+| `__endswith`   | Suffix match (case-insensitive)    | `?email__endswith=@example.com` |
+| `__in`         | Match any value (comma-separated)  | `?id__in=1,2,3`                 |
 
 **Special values:**
+
 - `?field=null` - Match null/None values
 
 **Multiple filters:**
+
 - Combined with AND logic: `?age__gte=18&status=active&city=NYC`
 - Max filters per request: 10 (configurable)
 

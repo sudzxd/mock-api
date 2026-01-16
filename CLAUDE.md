@@ -33,18 +33,26 @@ Parse Pydantic models → Generate fake data → Create REST endpoints → Handl
 - **CLI Reference:** `docs/cli-reference.md`
 - **API Reference:** `docs/api-reference.md`
 
-## Project Structure (High Level)
+## Project Structure (DDD Architecture)
 
 ```
 mock_api/
-├── cli/        # Click commands (main.py, init.py, serve.py, generate.py, validate.py)
-├── core/       # Core logic (parser.py, generator.py, store.py, router.py, server.py)
-├── integrations/
-└── utils/
-tests/          # Unit tests + benchmarks
-docs/           # All documentation
-examples/       # Example projects
+├── cli/                # Click commands (serve, generate, validate)
+├── core/               # Facades & orchestration (parser, generator, store, router, server)
+├── domain/             # Protocols & interfaces (schema, storage, generation, export, middleware)
+├── implementations/    # Concrete implementations (parsing, storage, generation)
+├── integrations/       # External integrations
+└── utils/              # Utilities (logger, etc)
+tests/                  # Unit tests + benchmarks
+docs/                   # All documentation
+examples/               # Example projects
 ```
+
+**Architecture Layers:**
+- **CLI:** User interface commands
+- **Core:** Facades that delegate to implementations (future multi-implementation support)
+- **Domain:** Protocol interfaces defining contracts for all extension points
+- **Implementations:** Concrete implementations (PydanticParser, FakerGenerator, InMemoryRepository)
 
 ## Critical Quick Reference
 
