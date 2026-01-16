@@ -17,6 +17,7 @@ from fastapi.testclient import TestClient
 from mock_api.core.constants import PRIMARY_KEY_FIELD, HTTPStatus
 from mock_api.core.parser import SchemaParser
 from mock_api.core.router import RouterGenerator
+from mock_api.core.services import FilterParser, ModelFactory, SortParser
 from mock_api.core.store import DataStore
 from mock_api.core.types import ModelSchema
 
@@ -50,11 +51,33 @@ def store() -> DataStore:
 
 
 @pytest.fixture
+def filter_parser() -> FilterParser:
+    """Create a FilterParser instance."""
+    return FilterParser()
+
+
+@pytest.fixture
+def sort_parser() -> SortParser:
+    """Create a SortParser instance."""
+    return SortParser()
+
+
+@pytest.fixture
+def model_factory() -> ModelFactory:
+    """Create a ModelFactory instance."""
+    return ModelFactory()
+
+
+@pytest.fixture
 def router_generator(
-    schemas: dict[str, ModelSchema], store: DataStore
+    schemas: dict[str, ModelSchema],
+    store: DataStore,
+    filter_parser: FilterParser,
+    sort_parser: SortParser,
 ) -> RouterGenerator:
-    """Create a RouterGenerator instance."""
-    return RouterGenerator(schemas, store)
+    """Create a RouterGenerator instance with injected services."""
+    model_factory = ModelFactory()
+    return RouterGenerator(schemas, store, filter_parser, sort_parser, model_factory)
 
 
 @pytest.fixture
@@ -78,10 +101,16 @@ def client(app: FastAPI) -> TestClient:
 
 
 def test_router_generator_initialization(
-    schemas: dict[str, ModelSchema], store: DataStore
+    schemas: dict[str, ModelSchema],
+    store: DataStore,
+    filter_parser: FilterParser,
+    sort_parser: SortParser,
+    model_factory: ModelFactory,
 ) -> None:
     """Test RouterGenerator initializes correctly."""
-    router_gen = RouterGenerator(schemas, store)
+    router_gen = RouterGenerator(
+        schemas, store, filter_parser, sort_parser, model_factory, prefix="/api/v1"
+    )
 
     assert router_gen.schemas == schemas
     assert router_gen.store == store
@@ -89,10 +118,21 @@ def test_router_generator_initialization(
 
 
 def test_router_generator_custom_prefix(
-    schemas: dict[str, ModelSchema], store: DataStore
+    schemas: dict[str, ModelSchema],
+    store: DataStore,
+    filter_parser: FilterParser,
+    sort_parser: SortParser,
+    model_factory: ModelFactory,
 ) -> None:
     """Test RouterGenerator with custom prefix."""
-    router_gen = RouterGenerator(schemas, store, prefix="/api/v2")
+    router_gen = RouterGenerator(
+        schemas=schemas,
+        store=store,
+        filter_parser=filter_parser,
+        sort_parser=sort_parser,
+        model_factory=model_factory,
+        prefix="/api/v2",
+    )
 
     assert router_gen.prefix == "/api/v2"
 

@@ -402,7 +402,7 @@ def test_generate_all_respects_dependency_order(
     """Test generate_all generates models in correct dependency order."""
     generator = DataGenerator(relationship_schemas)
 
-    result = generator.generate_all(count_per_model=5)
+    result = generator.generate_all(count=5)
 
     # Should have all three models
     assert "Author" in result
@@ -421,7 +421,7 @@ def test_generate_all_maintains_referential_integrity(
     """Test generate_all maintains FK integrity across models."""
     generator = DataGenerator(relationship_schemas)
 
-    result = generator.generate_all(count_per_model=10)
+    result = generator.generate_all(count=10)
 
     # Get all author IDs
     author_ids = {author[PRIMARY_KEY_FIELD] for author in result["Author"]}
@@ -445,7 +445,7 @@ def test_generate_all_with_custom_count(
     generator = DataGenerator(relationship_schemas)
     count = 3
 
-    result = generator.generate_all(count_per_model=count)
+    result = generator.generate_all(count=count)
 
     for _model_name, instances in result.items():
         assert len(instances) == count

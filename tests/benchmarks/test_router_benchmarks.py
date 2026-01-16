@@ -24,6 +24,7 @@ import pytest
 # Project/Local
 from mock_api.core.parser import SchemaParser
 from mock_api.core.router import RouterGenerator
+from mock_api.core.services import FilterParser, ModelFactory, SortParser
 from mock_api.core.store import DataStore
 from mock_api.core.types import ModelSchema
 from pytest_benchmark.fixture import BenchmarkFixture
@@ -46,7 +47,13 @@ def test_router_initialization(
     store = DataStore()
 
     def init_router() -> None:
-        RouterGenerator(schemas=parsed_benchmark_schema, store=store)
+        RouterGenerator(
+            schemas=parsed_benchmark_schema,
+            store=store,
+            filter_parser=FilterParser(),
+            sort_parser=SortParser(),
+            model_factory=ModelFactory(),
+        )
 
     benchmark(init_router)
 
@@ -69,7 +76,13 @@ def test_route_generation_small(
     store = DataStore()
 
     def generate_routes() -> None:
-        router_gen = RouterGenerator(schemas=parsed_benchmark_schema, store=store)
+        router_gen = RouterGenerator(
+            schemas=parsed_benchmark_schema,
+            store=store,
+            filter_parser=FilterParser(),
+            sort_parser=SortParser(),
+            model_factory=ModelFactory(),
+        )
         router = router_gen.generate_routes()
         # Each model gets 5 routes (list, create, read, update, delete)
         assert len(router.routes) > 0
@@ -94,7 +107,13 @@ def test_route_generation_single_model(
     store = DataStore()
 
     def generate_single() -> None:
-        router_gen = RouterGenerator(schemas=contact_schema, store=store)
+        router_gen = RouterGenerator(
+            schemas=contact_schema,
+            store=store,
+            filter_parser=FilterParser(),
+            sort_parser=SortParser(),
+            model_factory=ModelFactory(),
+        )
         router = router_gen.generate_routes()
         # 5 CRUD + 3 bulk operations
         assert len(router.routes) == 8
@@ -128,7 +147,13 @@ def test_router_scaling_small(
     store = DataStore()
 
     def generate_small() -> None:
-        router_gen = RouterGenerator(schemas=subset_schemas, store=store)
+        router_gen = RouterGenerator(
+            schemas=subset_schemas,
+            store=store,
+            filter_parser=FilterParser(),
+            sort_parser=SortParser(),
+            model_factory=ModelFactory(),
+        )
         router = router_gen.generate_routes()
         assert len(router.routes) == 24  # 3 models * 8 routes
 
@@ -159,7 +184,13 @@ def test_router_scaling_medium(
     store = DataStore()
 
     def generate_medium() -> None:
-        router_gen = RouterGenerator(schemas=subset_schemas, store=store)
+        router_gen = RouterGenerator(
+            schemas=subset_schemas,
+            store=store,
+            filter_parser=FilterParser(),
+            sort_parser=SortParser(),
+            model_factory=ModelFactory(),
+        )
         router = router_gen.generate_routes()
         assert len(router.routes) == 48  # 6 models * 8 routes
 
@@ -182,7 +213,13 @@ def test_model_registry_lookup(
     Tests hash map lookup performance.
     """
     store = DataStore()
-    router_gen = RouterGenerator(schemas=parsed_benchmark_schema, store=store)
+    router_gen = RouterGenerator(
+        schemas=parsed_benchmark_schema,
+        store=store,
+        filter_parser=FilterParser(),
+        sort_parser=SortParser(),
+        model_factory=ModelFactory(),
+    )
     registry = router_gen.registry
 
     def lookup_models() -> None:

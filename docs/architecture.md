@@ -10,105 +10,71 @@ mockapi-server generates REST APIs from Pydantic models by parsing type definiti
 
 - Type safety first
 - Zero configuration
-- Separation of concerns
-- Extensibility via interfaces
+- Separation of concerns (DDD layers)
+- Extensibility via protocols
 
-## Component Architecture
+## Layered Architecture
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│                          CLI Layer                          │
-│                     (Click Commands)                        │
+│                       CLI Layer                             │
+│                   (Click Commands)                          │
 └─────────────────────────┬───────────────────────────────────┘
                           │
 ┌─────────────────────────▼───────────────────────────────────┐
-│                        Server                               │
-│                    (Orchestrator)                           │
-└──┬───────────┬──────────┬─────────────┬────────────────────-┘
-   │           │          │             │
-   │           │          │             │
-┌──▼──-┐  ┌────▼──────┐ ┌───▼────┐ ┌────▼──────┐
-│Schema│  │ Data      │ │ Data   │ │Route      │
-│Parser│  │ Generator │ │ Store  │ │Generator  │
-└──┬───┘  └────┬───-──┘ └───┬────┘ └────┬──────┘
-   │           │          │           │
-   │           │          │           │
-   └───────────┴──────────┴───────────┘
-               │
-        ┌──────▼──────┐
-        │  FastAPI    │
-        │Application  │
-        └─────────────┘
+│                     Core Layer                              │
+│            (Facades & Orchestration)                        │
+│   SchemaParser │ DataGenerator │ DataStore │ Router        │
+└─────────────┬───────────────────────────────────────────────┘
+              │
+┌─────────────▼───────────────────────────────────────────────┐
+│                   Domain Layer                              │
+│                (Protocols & Interfaces)                     │
+│  ISchemaParser │ IDataGenerator │ IStorageStrategy          │
+└─────────────┬───────────────────────────────────────────────┘
+              │
+┌─────────────▼───────────────────────────────────────────────┐
+│               Implementations Layer                         │
+│           (Concrete Implementations)                        │
+│  PydanticParser │ FakerGenerator │ InMemoryRepository       │
+└─────────────────────────────────────────────────────────────┘
 ```
 
-### SchemaParser
+### Core Layer (Facades)
 
-**Responsibility:** Parse Pydantic models → ModelSchema
+**SchemaParser** - Facade for schema parsing
+- Delegates to `PydanticSchemaParser` implementation
+- Future: TypeScript, OpenAPI parsers (Issue #9)
 
-**Input:** Python file path
-**Output:** `dict[str, ModelSchema]`
+**DataGenerator** - Facade for data generation
+- Delegates to `FakerDataGenerator` implementation
+- Future: Custom providers (Issue #21)
 
-**Functionality:**
+**DataStore** - Facade for storage operations
+- Delegates to `InMemoryRepository` implementation
+- Future: JSON, SQLite, PostgreSQL (Issues #48-51)
 
-- Imports Python module
-- Extracts Pydantic BaseModel classes
-- Parses field types and annotations
-- Detects foreign key relationships (e.g., `author_id` → `User`)
-- Returns typed dataclass representations
+**Router** - Route generation with presentation layer
+- Uses `RouteHandlerFactory` for handler creation
+- Delegates to services for business logic
 
-### DataGenerator
+### Domain Layer (Protocols)
 
-**Responsibility:** ModelSchema → Fake data
+Defines interfaces for all extension points:
 
-**Input:** ModelSchema, count
-**Output:** `list[dict]`
+- `ISchemaParser` - Schema parsing interface
+- `IDataGenerator` - Data generation interface
+- `IStorageStrategy` - Storage backend interface
+- `IExportStrategy` - API export interface (Issue #47)
+- `IMiddleware` - Middleware interface (Issues #13, #12, #6)
 
-**Functionality:**
+### Implementations Layer
 
-- Generates realistic fake data based on field names (email, name, phone)
-- Respects foreign key constraints
-- Handles optional fields
-- Uses Faker library for semantic data
+Concrete implementations of domain protocols:
 
-### DataStore
-
-**Responsibility:** In-memory CRUD operations
-
-**Input:** Model name, data
-**Output:** Data or None
-
-**Functionality:**
-
-- Stores data in `dict[model_name, list[dict]]`
-- Implements create, read, update, delete operations
-- Filters by query parameters
-- Thread-safe for single process
-
-### RouteGenerator
-
-**Responsibility:** ModelSchema → FastAPI routes
-
-**Input:** ModelSchema, DataStore
-**Output:** FastAPI router
-
-**Functionality:**
-
-- Generates standard REST endpoints (GET, POST, PUT, DELETE)
-- Creates Pydantic response models
-- Adds OpenAPI documentation
-- Implements query parameter filtering
-
-### Server
-
-**Responsibility:** Orchestrates all components
-
-**Functionality:**
-
-- Instantiates parser, generator, store, route generator
-- Configures FastAPI application
-- Adds CORS middleware
-- Serves OpenAPI docs at `/docs`
-- Returns configured app for uvicorn
+- `PydanticSchemaParser` - Parses Pydantic models
+- `FakerDataGenerator` - Generates data with Faker
+- `InMemoryRepository` - In-memory storage with thread safety
 
 ## Data Flow
 
@@ -121,94 +87,116 @@ Client Request
 FastAPI Router
     │
     ▼
-Route Handler
+Route Handler (Presentation)
     │
     ▼
-DataStore (CRUD)
+Services (Application Logic)
     │
     ▼
-Pydantic Validation
+DataStore (Core Facade)
+    │
+    ▼
+Repository (Implementation)
     │
     ▼
 JSON Response
 ```
 
-### Data Generation Flow
+### Startup Flow
 
 ```
 models.py
     │
     ▼
-SchemaParser
+SchemaParser (Facade)
+    │
+    ▼
+PydanticSchemaParser (Implementation)
     │
     ▼
 ModelSchema[]
     │
     ▼
-DataGenerator
+DataGenerator (Facade)
     │
     ▼
-Fake Data[]
+FakerDataGenerator (Implementation)
     │
     ▼
-DataStore
+DataStore → InMemoryRepository
 ```
 
 ## Design Principles
 
 ### SOLID Principles
 
-**Single Responsibility:** Each component handles one concern (parsing, generating, storing, routing)
+**Single Responsibility:** Each layer has one concern (Core = facades, Domain = protocols, Implementations = concrete logic)
 
-**Open/Closed:** New parsers, generators, or storage backends can be added without modifying core
+**Open/Closed:** Extend via new implementations without modifying core (add parsers, storage backends, generators)
 
-**Liskov Substitution:** All parsers return ModelSchema, all stores implement same CRUD interface
+**Liskov Substitution:** All implementations can be swapped transparently via protocols
 
-**Interface Segregation:** Small, focused interfaces - components depend only on what they use
+**Interface Segregation:** Small, focused protocols - depend only on what you need
 
-**Dependency Inversion:** High-level Server depends on abstractions (interfaces), not implementations
+**Dependency Inversion:** Core depends on domain protocols, not concrete implementations
 
-### Other Principles
+### Architecture Benefits
 
-**Separation of Concerns:** Clear boundaries between parsing, generation, storage, and routing
+**Extensibility:** Add new implementations by implementing protocols (no core changes)
 
-**Dependency Injection:** Components receive dependencies via constructor (testability)
+**Testability:** Mock implementations via protocols for isolated testing
 
-**Type Safety:** Strong typing throughout with Python 3.11+ type hints and Pydantic
+**Future-Ready:** Scaffolding in place for 15+ planned features (storage backends, exporters, middleware)
 
 ## Extension Points
 
-### Custom Generators
-
-Implement custom data generation logic:
-
-```python
-class CustomGenerator:
-    def generate(self, model_name: str, count: int) -> list[dict]:
-        # Custom logic
-        pass
-```
-
-### Custom Storage Backends
-
-Replace in-memory store with database:
-
-```python
-class DatabaseStore:
-    def create(self, model_name: str, data: dict) -> dict:
-        # Database logic
-        pass
-```
+All extension points use protocol-based design:
 
 ### Custom Parsers
-
-Add TypeScript or OpenAPI support:
-
 ```python
+# Implement ISchemaParser protocol
 class TypeScriptParser:
     def parse_file(self, file_path: str) -> dict[str, ModelSchema]:
         # TypeScript parsing logic
         pass
+```
+
+### Custom Storage
+```python
+# Implement IStorageStrategy protocol
+class PostgreSQLRepository:
+    def create(self, model: str, data: dict) -> dict:
+        # PostgreSQL logic
+        pass
+```
+
+### Custom Generators
+```python
+# Implement IFieldGenerationStrategy protocol
+class DomainGenerator:
+    def can_generate(self, field: FieldSchema) -> bool:
+        return field.name in CUSTOM_PATTERNS
+
+    def generate(self, field: FieldSchema, context) -> Any:
+        # Custom generation logic
+        pass
+```
+
+## Factories
+
+Use factories to create implementations:
+
+```python
+from mock_api.implementations import (
+    SchemaParserFactory,
+    DataGeneratorFactory,
+    StorageStrategyFactory
+)
+
+# Create implementations
+parser = SchemaParserFactory.create("pydantic")
+generator = DataGeneratorFactory.create(schemas)
+storage = StorageStrategyFactory.create("memory://")
 ```
 
 ## References

@@ -22,6 +22,7 @@ from mock_api.core.generator import DataGenerator
 from mock_api.core.parser import SchemaParser
 from mock_api.core.router import RouterGenerator
 from mock_api.core.server import Server
+from mock_api.core.services import FilterParser, ModelFactory, SortParser
 from mock_api.core.store import DataStore
 
 # Project/Local
@@ -43,6 +44,18 @@ def benchmark_fixtures_dir() -> Path:
 def benchmark_models_path(benchmark_fixtures_dir: Path) -> Path:
     """Path to benchmark_models.py file."""
     return benchmark_fixtures_dir / "benchmark_models.py"
+
+
+@pytest.fixture
+def filter_parser() -> FilterParser:
+    """Fixture for FilterParser instance."""
+    return FilterParser()
+
+
+@pytest.fixture
+def sort_parser() -> SortParser:
+    """Fixture for SortParser instance."""
+    return SortParser()
 
 
 # =============================================================================
@@ -154,9 +167,19 @@ def large_populated_store() -> DataStore:
 
 
 @pytest.fixture
-def router_generator() -> RouterGenerator:
+def router_generator(
+    filter_parser: FilterParser, sort_parser: SortParser
+) -> RouterGenerator:
     """Create a fresh RouterGenerator instance."""
-    return RouterGenerator(schemas={}, store=DataStore(), prefix="/api/v1")
+    model_factory = ModelFactory()
+    return RouterGenerator(
+        schemas={},
+        store=DataStore(),
+        filter_parser=filter_parser,
+        sort_parser=sort_parser,
+        model_factory=model_factory,
+        prefix="/api/v1",
+    )
 
 
 # =============================================================================

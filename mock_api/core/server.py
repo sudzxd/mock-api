@@ -28,7 +28,15 @@ from .config import Config, get_config
 from .constants import API_VERSION_PREFIX, DEFAULT_GENERATION_COUNT
 from .generator import DataGenerator
 from .parser import SchemaParser
+from .protocols import (
+    IDataStore,
+    IFilterParser,
+    IModelFactory,
+    ISchemaParser,
+    ISortParser,
+)
 from .router import RouterGenerator
+from .services import FilterParser, ModelFactory, SortParser
 from .store import DataStore
 from .types import ModelSchema
 
@@ -66,8 +74,16 @@ class Server:
         generate_data: bool = False,
         data_count: int = DEFAULT_GENERATION_COUNT,
         config: Config | None = None,
+        parser: ISchemaParser | None = None,
+        store: IDataStore | None = None,
+        filter_parser: IFilterParser | None = None,
+        sort_parser: ISortParser | None = None,
+        model_factory: IModelFactory | None = None,
     ) -> None:
         """Initialize server components.
+
+        Supports dependency injection for all major components while providing
+        sensible defaults for backward compatibility.
 
         Args:
             models_file: Path to Python file containing Pydantic models.
@@ -75,13 +91,21 @@ class Server:
             generate_data: Whether to pre-populate with generated data.
             data_count: Number of instances to generate per model.
             config: Configuration instance (auto-loads if not provided).
+            parser: Schema parser implementation (default: SchemaParser).
+            store: Data store implementation (default: DataStore).
+            filter_parser: Filter parser implementation (default: FilterParser).
+            sort_parser: Sort parser implementation (default: SortParser).
+            model_factory: Model factory implementation (default: ModelFactory).
 
         Example:
+            >>> # Simple usage with defaults
+            >>> server = Server("models.py")
+
+            >>> # Custom implementations via dependency injection
             >>> server = Server(
             ...     "models.py",
-            ...     prefix="/api/v1",
-            ...     generate_data=True,
-            ...     data_count=100
+            ...     store=RedisDataStore(),
+            ...     parser=TypeScriptParser()
             ... )
         """
         self.models_file = models_file
@@ -90,12 +114,27 @@ class Server:
         self.data_count = data_count
         self.config = config or get_config()
 
-        # Initialize components
+        # Initialize components with dependency injection
+        # Use provided implementations or default to concrete classes
         logger.info(f"Initializing server from {models_file}")
-        self.parser = SchemaParser()
+        self.parser = parser or SchemaParser()
         self.schemas: dict[str, ModelSchema] = self.parser.parse_file(models_file)
-        self.store = DataStore()
-        self.router_generator = RouterGenerator(self.schemas, self.store, prefix)
+        self.store = store or DataStore()
+
+        # Initialize services
+        self.filter_parser = filter_parser or FilterParser(self.config)
+        self.sort_parser = sort_parser or SortParser(self.config)
+        self.model_factory = model_factory or ModelFactory()
+
+        # Inject services into RouterGenerator
+        self.router_generator = RouterGenerator(
+            self.schemas,
+            self.store,
+            self.filter_parser,
+            self.sort_parser,
+            self.model_factory,
+            prefix,
+        )
 
         # Lazy app initialization
         self._app: FastAPI | None = None

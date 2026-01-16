@@ -18,6 +18,7 @@ from mock_api.core.config import Config
 from mock_api.core.constants import PRIMARY_KEY_FIELD, BulkResponseKey, HTTPStatus
 from mock_api.core.parser import SchemaParser
 from mock_api.core.router import RouterGenerator
+from mock_api.core.services import FilterParser, ModelFactory, SortParser
 from mock_api.core.store import DataStore
 from mock_api.core.types import ModelSchema
 
@@ -45,6 +46,18 @@ def schemas(parser: SchemaParser, router_models_file: str) -> dict[str, ModelSch
 
 
 @pytest.fixture
+def filter_parser() -> FilterParser:
+    """Create a FilterParser instance."""
+    return FilterParser()
+
+
+@pytest.fixture
+def sort_parser() -> SortParser:
+    """Create a SortParser instance."""
+    return SortParser()
+
+
+@pytest.fixture
 def store() -> DataStore:
     """Create a fresh data store instance."""
     return DataStore()
@@ -58,10 +71,22 @@ def config() -> Config:
 
 @pytest.fixture
 def router_generator(
-    schemas: dict[str, ModelSchema], store: DataStore, config: Config
+    schemas: dict[str, ModelSchema],
+    store: DataStore,
+    config: Config,
+    filter_parser: FilterParser,
+    sort_parser: SortParser,
 ) -> RouterGenerator:
     """Create a RouterGenerator instance."""
-    return RouterGenerator(schemas, store, config=config)
+    model_factory = ModelFactory()
+    return RouterGenerator(
+        schemas,
+        store,
+        filter_parser,
+        sort_parser,
+        model_factory,
+        config=config,
+    )
 
 
 @pytest.fixture
