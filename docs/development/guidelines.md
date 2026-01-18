@@ -327,13 +327,6 @@ def parse_file(file_path: str) -> dict[str, ModelSchema]:
 3. **Cache Results**: Reuse parsed schemas and generated data
 4. **Simple is Fast**: Prefer straightforward code
 
-### Benchmarking
-
-```bash
-make benchmark           # Run benchmarks
-make benchmark-compare   # Compare with baseline
-```
-
 ### Performance Targets
 
 - Parser: < 10ms for 10 models

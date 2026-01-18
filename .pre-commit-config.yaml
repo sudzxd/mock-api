@@ -43,7 +43,7 @@ repos:
         args:
           - --write-changes
           - --skip=*.lock,*.json,*.pyc,htmlcov,dist,build,.git,.venv,__pycache__,uv.lock
-          - --ignore-words-list=hel
+          - --ignore-words-list=hel,nin
 
   # Python type annotations
   - repo: https://github.com/pre-commit/pygrep-hooks

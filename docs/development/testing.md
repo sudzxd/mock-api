@@ -7,7 +7,6 @@ Testing practices and guidelines for mockapi-server.
 ```bash
 make test          # Tests with coverage
 make test-fast     # Fast (no coverage)
-make benchmark     # Performance benchmarks
 ```
 
 ## Test Structure
@@ -16,8 +15,7 @@ make benchmark     # Performance benchmarks
 tests/
 ├── conftest.py              # Shared fixtures
 ├── fixtures/                # Test data models
-├── test_*.py                # Unit tests
-└── benchmarks/              # Performance tests
+└── test_*.py                # Unit tests
 ```
 
 ## Test Naming
@@ -92,7 +90,6 @@ make test          # Tests with coverage
 make test-fast     # Fast (no coverage)
 make test-unit     # Unit tests only
 make test-cov      # View HTML coverage report
-make benchmark     # Run benchmarks
 ```
 
 ## Coverage
@@ -113,35 +110,6 @@ make benchmark     # Run benchmarks
 pytest --cov=mock_api --cov-report=term-missing
 pytest --cov=mock_api --cov-report=html
 open htmlcov/index.html
-```
-
-## Benchmarks
-
-We use pytest-benchmark to track performance across 53 tests covering parser, generator, store, router, and server components.
-
-```bash
-make benchmark           # Run all benchmarks (~45s)
-make benchmark-compare   # Compare with baseline (fails if >20% slower)
-make benchmark-save      # Save new baseline after optimizations
-make benchmark-report    # Generate histogram in .benchmarks/
-```
-
-**Performance Targets:**
-- Parser: <10ms per model
-- Generator: <20ms for 100 records
-- Store CRUD: <10μs per operation
-- API requests: <2ms
-
-**CI Integration:** Benchmarks run on `develop` and `main` branches, posting results as commit comments and failing PRs with >20% performance regression.
-
-### Writing Benchmarks
-
-```python
-def test_parser_performance(benchmark):
-    """Benchmark: parser-simple."""
-    parser = SchemaParser()
-    result = benchmark(parser.parse_file, "tests/fixtures/models.py")
-    assert len(result) == 10
 ```
 
 ## Best Practices
@@ -181,4 +149,3 @@ Includes:
 
 - [pytest documentation](https://docs.pytest.org/)
 - [pytest-cov](https://pytest-cov.readthedocs.io/)
-- [pytest-benchmark](https://pytest-benchmark.readthedocs.io/)
