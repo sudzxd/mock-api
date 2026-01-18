@@ -86,7 +86,7 @@ No, data is stored in memory only. When the server stops, all data is lost. Use 
 **Solution:** Ensure the path is correct:
 
 ```bash
-mockapi-server serve --models ./path/to/models.py
+mockapi-server serve ./path/to/models.py
 ```
 
 ### Port already in use
@@ -94,7 +94,7 @@ mockapi-server serve --models ./path/to/models.py
 **Solution:** Use a different port:
 
 ```bash
-mockapi-server serve --models models.py --port 8000
+mockapi-server serve models.py --port 8000
 ```
 
 Or kill the process:

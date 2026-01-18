@@ -1,6 +1,6 @@
 # Getting Started
 
-Create your first mock API project in 5 minutes.
+Create your first mock API project in under 5 minutes.
 
 ## Installation
 
@@ -16,20 +16,7 @@ mockapi-server --version
 
 ## Quick Start
 
-### Option 1: Initialize with Template
-
-```bash
-mockapi-server init
-
-# Or non-interactive
-mockapi-server init --template blog --project-name my-blog --seed-count 50
-```
-
-Available templates: **basic**, **blog**, **ecommerce**, **custom**
-
-### Option 2: Manual Setup
-
-Create your models:
+**Create a Pydantic schema file:**
 
 ```python
 # models.py
@@ -43,36 +30,53 @@ class User(BaseModel):
     created_at: datetime
 ```
 
-Start the server:
+**Start the server:**
 
 ```bash
-mockapi-server serve --models models.py --generate-data --data-count 20
+mockapi-server serve models.py --generate-data --data-count 20
 ```
+
+The server starts at `http://localhost:8000` with:
+- REST API at `/api/v1`
+- Interactive docs at `/docs`
+- Alternative docs at `/redoc`
+
+## Data Storage
+
+Currently supports in-memory storage only (data lost on restart):
+
+```bash
+mockapi-server serve models.py --storage-url memory://
+```
+
+**Planned:** JSON file persistence, SQLite, PostgreSQL, Redis backends.
 
 ## Your First API Request
 
+Endpoints use the exact model name (e.g., `User` → `/User`, not `/users`):
+
 ```bash
 # List all users
-curl http://localhost:3000/api/v1/users
+curl http://localhost:8000/api/v1/User
 
 # Get specific user
-curl http://localhost:3000/api/v1/users/1
+curl http://localhost:8000/api/v1/User/1
 
 # Create user
-curl -X POST http://localhost:3000/api/v1/users \
+curl -X POST http://localhost:8000/api/v1/User \
   -H "Content-Type: application/json" \
   -d '{"id": 999, "name": "Alice", "email": "alice@example.com", "created_at": "2025-01-10T10:00:00Z"}'
 ```
 
 ## Interactive Docs
 
-Visit `http://localhost:3000/docs` for Swagger UI:
+Visit `http://localhost:8000/docs` for Swagger UI:
 
 - Browse all endpoints
 - See request/response schemas
 - Test API calls in browser
 
-Alternative: `http://localhost:3000/redoc`
+Alternative: `http://localhost:8000/redoc`
 
 ## Working with Relationships
 
@@ -88,42 +92,35 @@ class Post(BaseModel):
 
 Generated data respects relationships - all `author_id` values reference valid User IDs.
 
-## Configuration
+## CLI Options
 
-Create `mockapi-server.yml`:
-
-```yaml
-seed_count: 50
-port: 3000
-host: 0.0.0.0
-log_level: INFO
-auto_reload: true
-cors_enabled: true
-cors_origins: ["*"]
-```
-
-Use it:
+Control server behavior with command-line options:
 
 ```bash
-mockapi-server serve --models models.py --config mockapi-server.yml
+mockapi-server serve models.py \
+  --host 0.0.0.0 \
+  --port 8000 \
+  --reload \
+  --generate-data \
+  --data-count 50 \
+  --storage-url memory://
 ```
+
+See all options: `mockapi-server serve --help`
 
 ## Example Projects
 
-Explore complete working examples in the [examples/](../examples/) directory:
+Explore the working example in the [examples/basic/](../examples/basic/) directory:
 
-- **[Basic](../examples/basic/)** - Simple two-model API with interactive HTML client
-- **[Blog](../examples/blog/)** - Multi-model relationships with Docker support
-- **[E-commerce](../examples/ecommerce/)** - Complex relationships with Postman collection
+- Simple two-model API demonstrating User/Post relationship
+- Interactive HTML client for testing
+- Complete setup and run instructions
 
-Each example includes:
-- Complete Pydantic models
-- Setup and run instructions
-- Testing tools (HTML client, Docker, or Postman)
+**Planned:** Additional examples for blog and e-commerce use cases.
 
 ## Next Steps
 
-- [CLI Reference](cli-reference.md) - All commands and options
-- [API Reference](api-reference.md) - Python and REST APIs
-- [Examples](examples.md) - Real-world use cases
+- [CLI Reference](cli-reference.md) - Command-line options and usage
+- [API Reference](api-reference.md) - REST API endpoints and query syntax
+- [Architecture](architecture.md) - System design and DDD structure
 - [FAQ](faq.md) - Common questions

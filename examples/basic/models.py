@@ -1,22 +1,11 @@
-"""Basic example models demonstrating simple API generation.
+"""Basic example models for mockapi-server.
 
-This example shows how to create a basic REST API with two simple models.
+Simple User and Product API demonstrating core functionality.
 """
 
-from __future__ import annotations
-
-# =============================================================================
-# IMPORTS
-# =============================================================================
-# Standard library
 from datetime import datetime
 
-# Third-party
 from pydantic import BaseModel
-
-# =============================================================================
-# MODELS
-# =============================================================================
 
 
 class User(BaseModel):
@@ -30,7 +19,7 @@ class User(BaseModel):
 
 
 class Product(BaseModel):
-    """Product model for simple inventory management."""
+    """Product model with pricing and inventory."""
 
     id: int
     name: str

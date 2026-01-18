@@ -81,7 +81,6 @@ All commands should pass.
 | `make ci`         | CI pipeline simulation    |
 | `make clean`      | Remove build artifacts    |
 | `make run`        | Run example server        |
-| `make benchmark`  | Run benchmarks            |
 | `make help`       | Show all commands         |
 
 ## Project Structure
@@ -143,7 +142,7 @@ make dev
 ```bash
 make run  # Runs basic example
 # or
-mockapi-server serve --models examples/blog/models.py --generate-data --reload
+mockapi-server serve examples/blog/models.py --generate-data --reload
 ```
 
 ### Clean Build Artifacts

@@ -1,327 +1,284 @@
 # CLI Reference
 
-Complete reference for all mockapi-server commands.
+Complete command-line interface reference for mockapi-server.
+
+## Supported Schema Formats
+
+| Format | Extensions | Status | Description |
+|--------|-----------|--------|-------------|
+| **Pydantic** | `.py` | ✅ Implemented | Python Pydantic BaseModel classes |
+| **OpenAPI** | `.yaml`, `.json` | 📋 Planned | OpenAPI 3.x specifications |
+| **GraphQL** | `.graphql`, `.gql` | 📋 Planned | GraphQL schema definitions |
+
+Currently, only Pydantic models are supported. All formats will convert to a unified internal representation (`ModelSchema`).
 
 ## Global Options
 
 ```bash
-mockapi-server --version  # Show version
-mockapi-server --help     # Show help
+mockapi-server --version  # Show version and exit
+mockapi-server --help     # Show help message
 ```
 
 ## Commands
 
-### init
-
-Initialize a new mock API project with scaffolding.
-
-#### Usage
-
-```bash
-mockapi-server init [OPTIONS]
-```
-
-#### Options
-
-| Option           | Type   | Default             | Description                              |
-| ---------------- | ------ | ------------------- | ---------------------------------------- |
-| `--project-name` | TEXT   | `my-mockapi-server` | Project name                             |
-| `--template`     | CHOICE | -                   | Template: basic, blog, ecommerce, custom |
-| `--models-file`  | TEXT   | `models.py`         | Models file path                         |
-| `--seed-count`   | INT    | `10`                | Initial seed data count (1-10000)        |
-| `--port`         | INT    | `3000`              | Server port (1024-65535)                 |
-| `--force`        | FLAG   | False               | Overwrite existing files                 |
-
-#### Examples
-
-```bash
-# Interactive mode (prompts for all options)
-mockapi-server init
-
-# Non-interactive with all options
-mockapi-server init \
-  --template blog \
-  --project-name my-blog \
-  --seed-count 50 \
-  --port 8000
-
-# Use custom models file location
-mockapi-server init --models-file src/models.py
-
-# Force overwrite existing files
-mockapi-server init --template basic --force
-```
-
-#### Created Files
-
-- `models.py` - Pydantic model definitions
-- `mockapi-server.yml` - Configuration file
-- `README.md` - Project documentation
-- `.gitignore` - Git ignore rules
-
----
-
 ### serve
 
-Start the development server.
+Start development server from schema file.
 
-#### Usage
-
+**Usage:**
 ```bash
-mockapi-server serve --models MODELS_FILE [OPTIONS]
+mockapi-server serve SCHEMA_FILE [OPTIONS]
 ```
 
-#### Options
+**Arguments:**
 
-| Option               | Short | Type | Default   | Description            |
-| -------------------- | ----- | ---- | --------- | ---------------------- |
-| `--models`           | `-m`  | PATH | Required  | Path to models file    |
-| `--host`             | `-h`  | TEXT | `0.0.0.0` | Host to bind server    |
-| `--port`             | `-p`  | INT  | `3000`    | Port to bind server    |
-| `--reload`           | -     | FLAG | False     | Enable auto-reload     |
-| `--no-reload`        | -     | FLAG | -         | Disable auto-reload    |
-| `--generate-data`    | -     | FLAG | False     | Pre-populate with data |
-| `--no-generate-data` | -     | FLAG | -         | Skip data generation   |
-| `--data-count`       | `-c`  | INT  | `10`      | Instances per model    |
-| `--prefix`           | -     | TEXT | `/api/v1` | API route prefix       |
-| `--config`           | -     | PATH | -         | Config file path       |
+| Argument      | Type | Description |
+|---------------|------|-------------|
+| `SCHEMA_FILE` | PATH | Path to schema file (required) |
 
-#### Examples
+**Options:**
+
+| Option               | Type | Default      | Description |
+|----------------------|------|--------------|-------------|
+| `--host`             | TEXT | `0.0.0.0`    | Host to bind server |
+| `--port`             | INT  | `8000`       | Port to bind server |
+| `--reload`           | FLAG | False        | Enable auto-reload on file changes |
+| `--generate-data`    | FLAG | False        | Pre-populate with fake data on startup |
+| `--no-generate-data` | FLAG | -            | Explicitly disable data generation |
+| `--data-count`       | INT  | `10`         | Number of entities to generate per model |
+| `--storage-url`      | TEXT | `memory://`  | Storage backend URL |
+
+**Storage Backends:**
+
+| URL Format | Status | Description | Persistence |
+|------------|--------|-------------|-------------|
+| `memory://` | ✅ Implemented | In-memory storage (default) | Lost on restart |
+| `json://path/file.json` | 📋 Planned | JSON file storage | Persists across restarts |
+| `sqlite:///path/file.db` | 📋 Planned | SQLite database | Persists across restarts |
+
+**Examples:**
 
 ```bash
-# Basic server start
-mockapi-server serve --models models.py
+# Basic usage
+mockapi-server serve models.py
 
-# With data generation
-mockapi-server serve --models models.py --generate-data --data-count 50
+# With fake data generation
+mockapi-server serve models.py --generate-data --data-count 50
 
 # Custom host and port
-mockapi-server serve -m models.py --host localhost --port 8000
+mockapi-server serve models.py --host localhost --port 8000
 
-# With auto-reload for development
-mockapi-server serve -m models.py --reload
+# Development mode with auto-reload
+mockapi-server serve models.py --reload
 
-# Custom API prefix
-mockapi-server serve -m models.py --prefix /v2/api
-
-# Using config file
-mockapi-server serve --models models.py --config custom-config.yml
+# All options
+mockapi-server serve models.py \
+  --host 0.0.0.0 \
+  --port 8000 \
+  --reload \
+  --generate-data \
+  --data-count 100 \
+  --storage-url memory://
 ```
 
-#### Server URLs
+**Server URLs:**
 
 Once started, access:
+- **API Base:** `http://{host}:{port}/api/v1`
+- **Swagger UI:** `http://{host}:{port}/docs`
+- **ReDoc:** `http://{host}:{port}/redoc`
 
-- **API Base**: `http://{host}:{port}/api/v1`
-- **Swagger Docs**: `http://{host}:{port}/docs`
-- **ReDoc**: `http://{host}:{port}/redoc`
+**Typical Workflow:**
+
+```bash
+# 1. Start with generated data for testing
+mockapi-server serve models.py --generate-data --data-count 20
+
+# 2. Visit Swagger UI to explore API
+open http://localhost:8000/docs
+
+# 3. Test endpoints (note: model names are used as-is, e.g., User not users)
+curl http://localhost:8000/api/v1/User
+curl http://localhost:8000/api/v1/User/1
+```
 
 ---
 
-### generate
+## REST API Structure
 
-Generate mock data files without starting a server.
+### Endpoint Pattern
 
-#### Usage
+For each model in your schema, the following endpoints are auto-generated.
+
+**Model Name Convention:** Endpoint paths use the exact model name (e.g., `User` → `/User`, `BlogPost` → `/BlogPost`). No lowercasing or pluralization is applied.
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `GET` | `/api/v1/{ModelName}` | List all entities (with filtering, sorting, pagination) |
+| `GET` | `/api/v1/{ModelName}/{id}` | Get single entity by ID |
+| `POST` | `/api/v1/{ModelName}` | Create new entity |
+| `PUT` | `/api/v1/{ModelName}/{id}` | Update entity (partial update supported) |
+| `DELETE` | `/api/v1/{ModelName}/{id}` | Delete entity by ID |
+| `POST` | `/api/v1/{ModelName}/bulk` | Bulk create multiple entities |
+| `PUT` | `/api/v1/{ModelName}/bulk` | Bulk update multiple entities |
+| `DELETE` | `/api/v1/{ModelName}/bulk` | Bulk delete entities by IDs |
+
+### Query Parameters
+
+**Filtering:**
+
+Supported operators: `eq` (default), `ne`, `gt`, `gte`, `lt`, `lte`, `in`, `nin`, `contains`
 
 ```bash
-mockapi-server generate --models MODELS_FILE [OPTIONS]
+# Exact match (default operator)
+GET /api/v1/User?status=active
+
+# Comparison operators
+GET /api/v1/User?age__gte=18          # >=
+GET /api/v1/User?age__gt=18           # >
+GET /api/v1/User?age__lte=65          # <=
+GET /api/v1/User?age__lt=65           # <
+GET /api/v1/User?age__ne=25           # !=
+
+# String matching (case-insensitive substring)
+GET /api/v1/User?name__contains=john
+
+# IN operator (comma-separated values)
+GET /api/v1/User?id__in=1,2,3,4,5
+GET /api/v1/User?status__in=active,pending
+
+# NOT IN operator
+GET /api/v1/User?status__nin=deleted,archived
 ```
 
-#### Options
+**Sorting:**
+```bash
+# Ascending (default)
+GET /api/v1/User?sort=name
 
-| Option     | Short | Type   | Default  | Description          |
-| ---------- | ----- | ------ | -------- | -------------------- |
-| `--models` | `-m`  | PATH   | Required | Path to models file  |
-| `--output` | `-o`  | PATH   | `data`   | Output directory     |
-| `--count`  | `-c`  | INT    | `10`     | Instances per model  |
-| `--format` | `-f`  | CHOICE | `json`   | Output format (json) |
-| `--config` | -     | PATH   | -        | Config file path     |
+# Descending (prefix with -)
+GET /api/v1/Post?sort=-created_at
 
-#### Examples
+# Multiple fields
+GET /api/v1/User?sort=-created_at,name
+```
+
+**Pagination:**
+
+Only page-based pagination is currently supported:
 
 ```bash
-# Generate data to default directory
-mockapi-server generate --models models.py
-
-# Generate 100 instances per model
-mockapi-server generate -m models.py --count 100
-
-# Custom output directory
-mockapi-server generate -m models.py --output ./fixtures
-
-# Using config file
-mockapi-server generate --models models.py --config my-config.yml
+# Page-based pagination (default: page=1, page_size=20)
+GET /api/v1/User?page=1&page_size=20
+GET /api/v1/User?page=2&page_size=50
 ```
 
-#### Output
-
-Creates one JSON file per model:
-
-```
-data/
-├── user.json
-├── post.json
-└── comment.json
+**Combined:**
+```bash
+GET /api/v1/Post?author_id=5&published=true&sort=-views&page=1&page_size=10
 ```
 
-Example output format:
+### Response Format
 
+**List Response:**
 ```json
-[
-  {
-    "id": 1,
-    "name": "Alice Johnson",
-    "email": "alice.johnson@example.com",
-    "created_at": "2025-01-10T10:30:00Z"
-  },
-  {
-    "id": 2,
-    "name": "Bob Smith",
-    "email": "bob.smith@example.com",
-    "created_at": "2025-01-09T14:22:00Z"
-  }
-]
+{
+  "items": [...],
+  "total": 100,
+  "page": 1,
+  "page_size": 20,
+  "total_pages": 5
+}
 ```
 
----
-
-### validate
-
-Validate Pydantic models file.
-
-#### Usage
-
-```bash
-mockapi-server validate --models MODELS_FILE [OPTIONS]
+**Single Entity:**
+```json
+{
+  "id": 1,
+  "name": "Alice",
+  "email": "alice@example.com",
+  "created_at": "2025-01-17T10:00:00Z"
+}
 ```
 
-#### Options
-
-| Option      | Short | Type | Default  | Description         |
-| ----------- | ----- | ---- | -------- | ------------------- |
-| `--models`  | `-m`  | PATH | Required | Path to models file |
-| `--verbose` | `-v`  | FLAG | False    | Show detailed info  |
-
-#### Examples
-
-```bash
-# Basic validation
-mockapi-server validate --models models.py
-
-# Verbose output with field details
-mockapi-server validate -m models.py --verbose
+**Bulk Operations:**
+```json
+{
+  "items": [...],
+  "count": 10
+}
 ```
-
-#### Output
-
-Basic:
-
-```
-🔍 Validating models file...
-📁 File: models.py
-
-✅ Valid! Found 3 model(s):
-
-  📦 User
-  📦 Post
-  📦 Comment
-
-💡 Use --verbose for detailed model information
-```
-
-Verbose:
-
-```
-🔍 Validating models file...
-📁 File: models.py
-
-✅ Valid! Found 3 model(s):
-
-  📦 User
-     Fields: 5
-       - id: int
-       - name: str
-       - email: str
-       - age: int (optional)
-       - created_at: datetime
-
-  📦 Post
-     Fields: 5
-       - id: int
-       - title: str
-       - content: str
-       - author_id: int → User
-       - published: bool
-     Relationships: 1
-       - author → User (many_to_one)
-
-  📦 Comment
-     Fields: 4
-       - id: int
-       - text: str
-       - post_id: int → Post
-       - user_id: int → User
-     Relationships: 2
-       - post → Post (many_to_one)
-       - user → User (many_to_one)
-```
-
----
-
-## Configuration File
-
-Create `mockapi-server.yml` to avoid repeating options:
-
-````yaml
-# Server settings
-host: 0.0.0.0
-port: 3000
-auto_reload: false
-
-# Data generation
-seed_count: 50
-
-# Logging
-log_level: INFO # DEBUG, INFO, WARNING, ERROR
-
-# CORS
-cors_enabled: true
-cors_origins:
-  - "*"
-  - "http://localhost:3001"
-
-CLI options override config file values:
-
-```bash
-# Port from config: 3000
-mockapi-server serve --models models.py --config mockapi-server.yml
-
-# Port from CLI: 8000 (overrides config)
-mockapi-server serve --models models.py --config mockapi-server.yml --port 8000
-````
 
 ---
 
 ## Exit Codes
 
-| Code | Meaning                                         |
-| ---- | ----------------------------------------------- |
-| `0`  | Success                                         |
-| `1`  | Error (file not found, validation failed, etc.) |
+| Code | Meaning |
+|------|---------|
+| `0` | Success |
+| `1` | Error (file not found, parse error, validation failed, etc.) |
 
 ---
 
 ## Environment Variables
 
-Currently, mockapi-server does not use environment variables. All configuration is done via CLI options or config files.
+Currently not supported. All configuration via CLI options or config files.
 
 ---
 
-## Tips
+## Tips & Best Practices
 
-- Use `--reload` during development for automatic restarts
+**Development:**
+- Use `--reload` for automatic server restart on file changes
 - Use `--generate-data` to start with realistic test data
-- Use config files for project-specific settings
-- Use `validate --verbose` to understand detected relationships
-- Generate data files once, reuse in tests
+- Use `http://localhost:8000/docs` for interactive API testing
+
+**Data Generation:**
+- Start with `--data-count 10` for quick prototyping
+- Use `--data-count 100+` for realistic load testing
+- Foreign keys automatically reference IDs (currently random 1-100)
+
+**Performance:**
+- In-memory storage (`memory://`) is fast but data is lost on restart
+- Bulk operations (`/bulk` endpoints) are significantly faster than individual creates
+
+**Schema Design:**
+- Use foreign key pattern: `author_id: int` auto-detects relationship to `Author` model
+- Optional fields: `bio: str | None = None` (50% chance of None when generated)
+- Model names are used exactly as defined (e.g., `User` → `/User`, not `/users`)
+
+---
+
+## Planned Commands
+
+The following commands are **not yet implemented**:
+
+### mockapi-server init
+
+Initialize new project with template scaffolding.
+
+### mockapi-server generate
+
+Generate mock data files without starting server.
+
+### mockapi-server validate
+
+Validate schema file and show detected models.
+
+Track progress: [GitHub Issues](https://github.com/sudzxd/mockapi-server/issues)
+
+---
+
+## Getting Help
+
+```bash
+# Show all commands
+mockapi-server --help
+
+# Show command-specific help
+mockapi-server serve --help
+```
+
+For issues or questions:
+- [GitHub Issues](https://github.com/sudzxd/mockapi-server/issues)
+- [Documentation](https://github.com/sudzxd/mockapi-server/docs)

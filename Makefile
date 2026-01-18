@@ -121,6 +121,7 @@ clean: ## Remove build artifacts and cache files
 	rm -rf htmlcov/
 	rm -rf .coverage
 	rm -rf coverage.xml
+	rm -rf .benchmarks/
 	find . -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null || true
 	find . -type f -name "*.pyc" -delete
 	find . -type f -name "*.pyo" -delete
@@ -207,25 +208,6 @@ deps: ## Show dependency tree
 	@echo "$(BLUE)Dependency Tree$(NC)"
 	@echo "---------------"
 	@uv pip tree
-
-##@ Benchmarking
-
-benchmark: ## Run performance benchmarks
-	@echo "$(BLUE)Running benchmarks...$(NC)"
-	uv run pytest tests/benchmarks/ --benchmark-only -v
-
-benchmark-compare: ## Run benchmarks with comparison to baseline
-	@echo "$(BLUE)Running benchmarks with comparison...$(NC)"
-	uv run pytest tests/benchmarks/ --benchmark-only --benchmark-compare -v
-
-benchmark-save: ## Run benchmarks and save as new baseline
-	@echo "$(BLUE)Running benchmarks and saving baseline...$(NC)"
-	uv run pytest tests/benchmarks/ --benchmark-only --benchmark-autosave -v
-
-benchmark-report: ## Generate benchmark histogram report
-	@echo "$(BLUE)Generating benchmark report...$(NC)"
-	uv run pytest tests/benchmarks/ --benchmark-only --benchmark-histogram -v
-	@echo "$(GREEN)Report saved to .benchmarks/$(NC)"
 
 ##@ Examples
 

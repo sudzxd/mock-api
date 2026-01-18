@@ -67,10 +67,10 @@ git commit --no-verify
 
 ```bash
 # Relative path
-mockapi-server serve --models ./path/to/models.py
+mockapi-server serve ./path/to/models.py
 
 # Absolute path
-mockapi-server serve --models /full/path/to/models.py
+mockapi-server serve /full/path/to/models.py
 
 # Verify file exists
 ls -la models.py
@@ -90,7 +90,7 @@ pip install pydantic
 
 ```bash
 # Use different port
-mockapi-server serve --models models.py --port 8000
+mockapi-server serve models.py --port 8000
 
 # Find and kill process
 lsof -i :3000
@@ -127,7 +127,7 @@ cors_origins:
 ```
 
 ```bash
-mockapi-server serve --models models.py --config mockapi-server.yml
+mockapi-server serve models.py --config mockapi-server.yml
 ```
 
 ### Foreign Key Issues
@@ -137,7 +137,7 @@ mockapi-server serve --models models.py --config mockapi-server.yml
 **Solution:** Use `--generate-data` flag for automatic relationship handling:
 
 ```bash
-mockapi-server serve --models models.py --generate-data
+mockapi-server serve models.py --generate-data
 ```
 
 Or create parent records first when manually creating data:
